@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MusicMate — Músicos y Bandas</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -32,10 +32,10 @@
     }
   </style>
 </head>
-<body class="min-h-screen text-zinc-100 select-none sm:select-auto">
-  <!-- Landing / Pantalla de acceso obligatorio sin sesión -->
+<body class="min-h-screen text-zinc-100 select-text">
+  <!-- Landing / Pantalla de acceso obligatorio o modo invitado -->
   <div id="authGateScreen" class="min-h-screen flex items-center justify-center px-4 py-8">
-    <div class="w-full max-w-sm rounded-3xl bg-[#0c0e13]/95 border border-zinc-800/90 p-6 shadow-2xl space-y-6">
+    <div class="w-full max-w-sm rounded-3xl bg-[#0c0e13]/95 border border-zinc-800/90 p-6 shadow-2xl space-y-5">
       <div class="flex flex-col items-center text-center space-y-3">
         <span class="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-[#14171f] border border-zinc-800 shadow-lg">
           <svg class="w-11 h-11" viewBox="6 6 84 84" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Logo MusicMate">
@@ -56,6 +56,20 @@
       </div>
 
       <div id="gateErrorBox" class="hidden rounded-xl bg-rose-950/50 border border-rose-500/40 px-3 py-2 text-xs text-rose-200"></div>
+
+      <div id="guestNoticeBox" class="hidden rounded-xl bg-amber-500/10 border border-amber-500/40 px-3 py-2.5 text-xs text-amber-200 space-y-2">
+        <p class="leading-relaxed">
+          <strong>Modo invitado:</strong> solo podrás ver anuncios y fichas en lectura. No podrás publicar anuncios, contestar chats, crear/editar bandas ni guardar cambios.
+        </p>
+        <div class="flex items-center justify-end gap-2">
+          <button type="button" onclick="cancelGuestMode()" class="px-2.5 py-1 rounded-lg bg-zinc-800 text-zinc-300 text-[11px] cursor-pointer">
+            Cancelar
+          </button>
+          <button type="button" onclick="confirmGuestMode()" class="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-[11px] cursor-pointer">
+            Entrar como invitado
+          </button>
+        </div>
+      </div>
 
       <div class="space-y-3 text-xs">
         <button
@@ -88,11 +102,20 @@
             </button>
           </div>
         </form>
+
+        <button
+          id="btnGuestAccess"
+          type="button"
+          onclick="promptGuestMode()"
+          class="w-full py-2 px-3 rounded-xl bg-[#111318] hover:bg-[#171a22] border border-zinc-800 text-zinc-300 font-semibold transition cursor-pointer"
+        >
+          Acceso como invitado
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- Aplicación principal (oculta hasta iniciar sesión) -->
+  <!-- Aplicación principal -->
   <div id="appShell" class="hidden max-w-md mx-auto min-h-screen flex flex-col border-x border-zinc-800/80 bg-[#0c0e13]/95 shadow-2xl">
     <!-- Cabecera fija superior -->
     <header class="sticky top-0 z-30 bg-[#0c0e13]/95 backdrop-blur-md border-b border-zinc-800/90 px-4 pt-3 pb-2.5 space-y-2.5">
@@ -135,7 +158,7 @@
         </div>
       </div>
 
-      <!-- Cinta principal de 4 pestañas (sin Publicar, movido dentro de Explorar) -->
+      <!-- Cinta principal de 4 pestañas -->
       <div class="grid grid-cols-4 gap-1 p-1 rounded-xl bg-[#13161f] border border-zinc-800/90 text-[11px] font-semibold">
         <button id="tabBtnExplore" type="button" onclick="switchTab('explore')" class="py-1.5 rounded-lg bg-zinc-800 text-amber-400 transition cursor-pointer">
           Explorar
@@ -175,7 +198,7 @@
         </button>
       </div>
 
-      <!-- Desplegable de filtros: Estilos, Instrumentos, Estado y Bandas -->
+      <!-- Desplegable de filtros: Estilos, Instrumentos, Estado, Solo con banda, Días, Nivel y Ciudad -->
       <div id="quickFiltersPanel" class="hidden rounded-xl bg-[#111318] border border-zinc-800/90 p-2.5 space-y-2.5 text-xs">
         <div class="grid grid-cols-2 gap-2">
           <div class="relative">
@@ -212,6 +235,35 @@
         </div>
 
         <div class="grid grid-cols-2 gap-2">
+          <div class="relative">
+            <label class="block text-[10px] font-mono text-zinc-400 mb-1">Días de ensayo</label>
+            <button
+              type="button"
+              onclick="toggleMultiSelectDropdown('filterDaysDropdown')"
+              class="w-full flex items-center justify-between gap-1 rounded-lg bg-[#0b0d12] hover:bg-[#161922] border border-zinc-800 px-2.5 py-1.5 text-left text-zinc-200 focus:outline-none focus:border-amber-500 cursor-pointer"
+            >
+              <span id="filterDaysTriggerText" class="truncate">Cualquier día</span>
+              <span class="font-mono text-[10px] text-zinc-400">▾</span>
+            </button>
+            <div
+              id="filterDaysDropdown"
+              class="hidden multi-select-menu absolute left-0 right-0 mt-1 z-40 rounded-xl bg-[#141720] border border-zinc-700/90 p-2 shadow-2xl space-y-1"
+            ></div>
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-mono text-zinc-400 mb-1">Nivel</label>
+            <select id="filterLevelSelect" onchange="renderFeed()" class="w-full rounded-lg bg-[#0b0d12] border border-zinc-800 px-2 py-1.5 text-zinc-200 focus:outline-none focus:border-amber-500">
+              <option value="">Todos los niveles</option>
+              <option value="Principiante / Local">Principiante / Local</option>
+              <option value="Intermedio">Intermedio</option>
+              <option value="Avanzado / Directo">Avanzado / Directo</option>
+              <option value="Sesión / Pro">Sesión / Pro</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
           <div>
             <label id="lblFilterAdStatus" class="block text-[10px] font-mono text-zinc-400 mb-1">Estado anuncio</label>
             <select id="filterAdStatusSelect" onchange="renderFeed()" class="w-full rounded-lg bg-[#0b0d12] border border-zinc-800 px-2 py-1.5 text-zinc-200 focus:outline-none focus:border-amber-500">
@@ -221,19 +273,33 @@
               <option value="paused">Pausado</option>
             </select>
           </div>
-          <div class="flex items-end">
-            <label class="w-full flex items-center gap-2 rounded-lg bg-[#0b0d12] border border-zinc-800 px-2.5 py-1.5 text-zinc-200 cursor-pointer">
-              <input id="filterBandLinkedOnly" type="checkbox" onchange="renderFeed()" class="rounded border-zinc-600 bg-zinc-900 text-amber-500 cursor-pointer" />
-              <span id="lblFilterBandOnly" class="truncate text-[11px]">Solo con banda</span>
-            </label>
+          <div class="relative">
+            <label class="block text-[10px] font-mono text-zinc-400 mb-1">Ciudad / Zona</label>
+            <input
+              id="filterCityInput"
+              type="text"
+              autocomplete="off"
+              data-city-autocomplete="filterCitySuggestions"
+              oninput="renderFeed()"
+              placeholder="Ej. Sabadell, Madrid..."
+              class="w-full rounded-lg bg-[#0b0d12] border border-zinc-800 px-2 py-1.5 text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-amber-500"
+            />
+            <div id="filterCitySuggestions" class="hidden city-suggestions-menu absolute left-0 right-0 mt-1 z-50 rounded-xl bg-[#141720] border border-zinc-700 shadow-2xl divide-y divide-zinc-800"></div>
           </div>
+        </div>
+
+        <div class="flex items-center justify-between gap-2">
+          <label class="flex items-center gap-2 rounded-lg bg-[#0b0d12] border border-zinc-800 px-2.5 py-1.5 text-zinc-200 cursor-pointer">
+            <input id="filterBandLinkedOnly" type="checkbox" onchange="renderFeed()" class="rounded border-zinc-600 bg-zinc-900 text-amber-500 cursor-pointer" />
+            <span id="lblFilterBandOnly" class="truncate text-[11px]">Solo con banda</span>
+          </label>
+          <button id="btnClearFilters" type="button" onclick="clearAllFeedFilters()" class="font-mono text-[10px] text-amber-400 hover:underline shrink-0 cursor-pointer">
+            Limpiar todo
+          </button>
         </div>
 
         <div class="flex items-center justify-between pt-1 border-t border-zinc-800/80 text-[11px]">
           <div id="activeFilterChipsBar" class="flex flex-wrap gap-1"></div>
-          <button id="btnClearFilters" type="button" onclick="clearAllFeedFilters()" class="font-mono text-[10px] text-amber-400 hover:underline shrink-0 cursor-pointer">
-            Limpiar
-          </button>
         </div>
       </div>
     </header>
@@ -248,7 +314,6 @@
     <main class="flex-1 px-4 py-4 space-y-4">
       <!-- Explorar -->
       <section id="viewExplore" class="space-y-3">
-        <!-- Botón destacado para publicar anuncio desde Explorar -->
         <div class="flex items-center justify-between gap-2 rounded-2xl bg-[#111318] border border-zinc-800/90 p-2.5">
           <div class="min-w-0 pl-1">
             <p id="exploreCtaTitle" class="text-xs font-semibold text-zinc-100 truncate">¿Buscas banda o músico?</p>
@@ -278,7 +343,7 @@
 
         <div class="flex items-center justify-between text-[11px] font-mono text-zinc-400 px-0.5">
           <span id="resultsCountLabel">Cargando anuncios...</span>
-          <button id="btnSeedDemoData" type="button" class="text-amber-400 hover:text-amber-300 underline cursor-pointer">
+          <button id="btnSeedDemoData" type="button" class="hidden text-amber-400 hover:text-amber-300 underline cursor-pointer">
             Cargar base inicial
           </button>
         </div>
@@ -302,7 +367,6 @@
           </button>
         </div>
 
-        <!-- Buscador y filtros de bandas -->
         <div class="rounded-2xl bg-[#111318] border border-zinc-800/90 p-3 space-y-2 text-xs">
           <input
             id="bandSearchInput"
@@ -335,7 +399,6 @@
             <button type="button" id="btnCancelCreateBand" class="font-mono text-[11px] text-zinc-400 hover:text-zinc-200 cursor-pointer">Cerrar</button>
           </div>
 
-          <!-- Foto de la banda -->
           <div class="rounded-xl bg-[#0b0d12] border border-zinc-800 p-2.5 space-y-2">
             <label class="block text-zinc-400 text-[11px]">Foto / portada de la banda (opcional)</label>
             <div class="flex items-center gap-2.5">
@@ -351,11 +414,11 @@
 
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="block text-zinc-400 mb-1">Nombre de la banda</label>
+              <label class="block text-zinc-400 mb-1">Nombre de la banda *</label>
               <input id="newBandName" type="text" required placeholder="Ej. THE RIFFS" class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100" />
             </div>
             <div>
-              <label class="block text-zinc-400 mb-1">Estado</label>
+              <label class="block text-zinc-400 mb-1">Estado *</label>
               <select id="newBandStatus" class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100">
                 <option value="BUSCA MÚSICO">BUSCA MÚSICO</option>
                 <option value="ACTIVA">ACTIVA</option>
@@ -364,8 +427,33 @@
             </div>
           </div>
 
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-zinc-400 mb-1">Nivel de la banda *</label>
+              <select id="newBandLevel" required class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100">
+                <option value="Principiante / Local">Principiante / Local</option>
+                <option value="Intermedio">Intermedio</option>
+                <option value="Avanzado / Directo">Avanzado / Directo</option>
+                <option value="Sesión / Pro">Sesión / Pro</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-zinc-400 mb-1">Franja horaria ensayo *</label>
+              <input id="newBandTimeSlot" type="text" required placeholder="Ej. 19:30 - 22:00" class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-zinc-400 mb-1">Días de ensayo *</label>
+            <div id="newBandDaysChecks" class="flex flex-wrap gap-1.5"></div>
+            <label class="mt-2 inline-flex items-center gap-2 text-[11px] text-zinc-300 cursor-pointer">
+              <input id="newBandFlexible" type="checkbox" class="rounded border-zinc-600 bg-zinc-900 text-amber-500 cursor-pointer" />
+              <span>Horario / días flexibles o adaptables</span>
+            </label>
+          </div>
+
           <div class="relative">
-            <label class="block text-zinc-400 mb-1">Estilos</label>
+            <label class="block text-zinc-400 mb-1">Estilos *</label>
             <button
               type="button"
               onclick="toggleMultiSelectDropdown('newBandStylesDropdown')"
@@ -383,7 +471,7 @@
 
           <div class="grid grid-cols-2 gap-2">
             <div class="relative">
-              <label class="block text-zinc-400 mb-1">Ciudad / Zona</label>
+              <label class="block text-zinc-400 mb-1">Ciudad / Zona *</label>
               <input id="newBandZone" type="text" required autocomplete="off" data-city-autocomplete="newBandZoneSuggestions" placeholder="Escribe ciudad..." class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100" />
               <div id="newBandZoneSuggestions" class="hidden city-suggestions-menu absolute left-0 right-0 mt-1 z-50 rounded-xl bg-[#141720] border border-zinc-700 shadow-2xl divide-y divide-zinc-800"></div>
             </div>
@@ -393,15 +481,15 @@
             </div>
           </div>
           <div>
-            <label class="block text-zinc-400 mb-1">Influencias</label>
+            <label class="block text-zinc-400 mb-1">Influencias *</label>
             <input id="newBandInfluences" type="text" required placeholder="Ej. The Clash, Queens of the Stone Age..." class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100" />
           </div>
           <div>
-            <label class="block text-zinc-400 mb-1">Días y local de ensayo</label>
-            <input id="newBandSchedule" type="text" required placeholder="Miércoles 20:00 · Sala de ensayo" class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100" />
+            <label class="block text-zinc-400 mb-1">Local / notas de ensayo *</label>
+            <input id="newBandSchedule" type="text" required placeholder="Ej. Local en Pol. Can Feu, equipo propio..." class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100" />
           </div>
           <div>
-            <label class="block text-zinc-400 mb-1">Descripción / Bio de la banda</label>
+            <label class="block text-zinc-400 mb-1">Descripción / Bio de la banda *</label>
             <textarea id="newBandTagline" rows="2" required placeholder="Temas propios, repertorio, objetivos..." class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100"></textarea>
           </div>
 
@@ -427,7 +515,7 @@
         <div id="bandsDirectoryList" class="rounded-2xl bg-[#111318] border border-zinc-800/90 divide-y divide-zinc-800/80 overflow-hidden"></div>
       </section>
 
-      <!-- Vista dedicada de Ficha de Banda (Ventana completa propia) -->
+      <!-- Vista dedicada de Ficha de Banda -->
       <section id="viewBandProfile" class="hidden space-y-3">
         <div class="flex items-center justify-between gap-2">
           <button
@@ -467,7 +555,14 @@
                 <span id="threadPeerAvatar" class="w-8 h-8 rounded-xl bg-[#0b0d12] border border-zinc-700 group-hover:border-amber-500 overflow-hidden inline-flex items-center justify-center font-mono text-[10px] font-bold text-amber-400 shrink-0">MM</span>
                 <div class="min-w-0">
                   <p id="threadPeerName" class="text-xs font-bold text-zinc-100 group-hover:text-amber-400 truncate underline decoration-zinc-600 group-hover:decoration-amber-400">Músico</p>
-                  <p id="threadAdTitle" class="text-[11px] text-amber-400/90 truncate">Anuncio</p>
+                  <button
+                    id="threadAdLinkBtn"
+                    type="button"
+                    onclick="event.stopPropagation(); jumpToLinkedAdFromThread()"
+                    class="text-[11px] text-amber-400 hover:underline truncate block text-left cursor-pointer"
+                  >
+                    Anuncio →
+                  </button>
                 </div>
               </button>
             </div>
@@ -476,9 +571,19 @@
             </span>
           </div>
 
+          <!-- Barra rápida para invitar al interlocutor a una banda -->
+          <div id="threadInviteBar" class="hidden px-3 py-2 bg-[#12151e] border-b border-zinc-800/90 flex flex-wrap items-center gap-2 text-[11px]">
+            <span class="font-mono text-[10px] text-amber-400 shrink-0">Invitar a banda:</span>
+            <select id="threadInviteBandSelect" class="flex-1 min-w-[120px] rounded-lg bg-[#0b0d12] border border-zinc-700 px-2 py-1 text-[11px] text-zinc-100"></select>
+            <select id="threadInviteInstSelect" class="rounded-lg bg-[#0b0d12] border border-zinc-700 px-2 py-1 text-[11px] text-zinc-100"></select>
+            <button type="button" onclick="inviteChatPeerToBand()" class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-[11px] cursor-pointer shrink-0">
+              Invitar
+            </button>
+          </div>
+
           <div id="peerProfileReadOnlyCard" class="hidden p-3.5 bg-[#161923] border-b border-amber-500/35 space-y-2.5 text-xs"></div>
 
-          <div id="threadMessagesScroll" class="p-3 space-y-2.5 max-h-[54vh] min-h-[260px] overflow-y-auto bg-[#0b0d12]"></div>
+          <div id="threadMessagesScroll" class="p-3 space-y-2.5 max-h-[60vh] min-h-[260px] overflow-y-auto bg-[#0b0d12]"></div>
 
           <form id="sendPrivateMessageForm" class="p-2.5 bg-[#111318] border-t border-zinc-800 flex items-center gap-2">
             <input
@@ -496,7 +601,7 @@
         </div>
       </section>
 
-      <!-- Publicar / Editar Anuncio (accesible desde Explorar) -->
+      <!-- Publicar / Editar Anuncio -->
       <section id="viewPublish" class="hidden space-y-3">
         <div class="flex items-center justify-between gap-2">
           <div>
@@ -515,14 +620,14 @@
         <form id="quickPublishForm" class="rounded-2xl bg-[#111318] border border-zinc-800/90 p-4 space-y-3 text-xs">
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="block text-zinc-400 mb-1">Tipo de anuncio</label>
+              <label class="block text-zinc-400 mb-1">Tipo de anuncio *</label>
               <select id="pubType" onchange="syncPublishBandSelector()" class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100 focus:outline-none focus:border-amber-500">
                 <option value="Buscar banda">Buscar banda</option>
                 <option value="Buscar músico">Buscar músico</option>
               </select>
             </div>
             <div>
-              <label class="block text-zinc-400 mb-1">Estado del anuncio</label>
+              <label class="block text-zinc-400 mb-1">Estado del anuncio *</label>
               <select id="pubStatus" class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100 focus:outline-none focus:border-amber-500">
                 <option value="open">Abierto</option>
                 <option value="paused">Pausado</option>
@@ -532,7 +637,7 @@
           </div>
 
           <div id="pubBandSelectorWrap" class="hidden space-y-1.5">
-            <label class="block text-zinc-400">Tu banda (creada por ti o donde tocas)</label>
+            <label class="block text-zinc-400">Banda o estado del proyecto</label>
             <select id="pubBandSelect" class="w-full rounded-xl bg-[#0b0d12] border border-amber-500/70 px-3 py-2 text-zinc-100 focus:outline-none focus:border-amber-500"></select>
             <div class="flex items-center justify-between gap-2 text-[10px] text-zinc-400">
               <span id="pubBandHelperText"></span>
@@ -543,13 +648,38 @@
           </div>
 
           <div>
-            <label class="block text-zinc-400 mb-1">Título</label>
-            <input id="pubTitle" type="text" required placeholder="Ej. Buscamos bajista para ensayos semanales" class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500" />
+            <label class="block text-zinc-400 mb-1">Título *</label>
+            <input id="pubTitle" type="text" required placeholder="Ej. Buscamos bajista para ensayos entre semana" class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-zinc-400 mb-1">Nivel *</label>
+              <select id="pubLevel" required class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100 focus:outline-none focus:border-amber-500">
+                <option value="Principiante / Local">Principiante / Local</option>
+                <option value="Intermedio">Intermedio</option>
+                <option value="Avanzado / Directo">Avanzado / Directo</option>
+                <option value="Sesión / Pro">Sesión / Pro</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-zinc-400 mb-1">Franja horaria *</label>
+              <input id="pubTimeSlot" type="text" required placeholder="Ej. 20:00 - 22:30" class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-zinc-400 mb-1">Días de ensayo / disponibilidad *</label>
+            <div id="pubDaysChecks" class="flex flex-wrap gap-1.5"></div>
+            <label class="mt-2 inline-flex items-center gap-2 text-[11px] text-zinc-300 cursor-pointer">
+              <input id="pubFlexible" type="checkbox" class="rounded border-zinc-600 bg-zinc-900 text-amber-500 cursor-pointer" />
+              <span>Horario / días flexibles</span>
+            </label>
           </div>
 
           <div class="space-y-2.5">
             <div class="relative">
-              <label class="block text-zinc-400 mb-1">Instrumentos (selección múltiple)</label>
+              <label class="block text-zinc-400 mb-1">Instrumentos * (selección múltiple)</label>
               <button
                 type="button"
                 onclick="toggleMultiSelectDropdown('pubInstrumentsDropdown')"
@@ -566,7 +696,7 @@
             </div>
 
             <div class="relative">
-              <label class="block text-zinc-400 mb-1">Estilos de música (selección múltiple)</label>
+              <label class="block text-zinc-400 mb-1">Estilos de música * (selección múltiple)</label>
               <button
                 type="button"
                 onclick="toggleMultiSelectDropdown('pubStylesDropdown')"
@@ -585,8 +715,8 @@
 
           <div class="grid grid-cols-2 gap-2">
             <div class="relative">
-              <label class="block text-zinc-400 mb-1">Ciudad / Zona</label>
-              <input id="pubZone" type="text" required autocomplete="off" data-city-autocomplete="pubZoneSuggestions" placeholder="Escribe ciudad..." class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500" />
+              <label class="block text-zinc-400 mb-1">Ciudad / Zona *</label>
+              <input id="pubZone" type="text" required autocomplete="off" data-city-autocomplete="pubZoneSuggestions" placeholder="Escribe ciudad en España..." class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500" />
               <div id="pubZoneSuggestions" class="hidden city-suggestions-menu absolute left-0 right-0 mt-1 z-50 rounded-xl bg-[#141720] border border-zinc-700 shadow-2xl divide-y divide-zinc-800"></div>
             </div>
             <div>
@@ -596,8 +726,8 @@
           </div>
 
           <div>
-            <label class="block text-zinc-400 mb-1">Detalles</label>
-            <textarea id="pubDesc" rows="3" required placeholder="Días de ensayo, equipo, influencias o disponibilidad..." class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500"></textarea>
+            <label class="block text-zinc-400 mb-1">Detalles *</label>
+            <textarea id="pubDesc" rows="3" required placeholder="Local de ensayo, equipo, influencias o disponibilidad..." class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500"></textarea>
           </div>
           <button id="btnSubmitPublishForm" type="submit" class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs transition cursor-pointer">
             Publicar anuncio
@@ -624,7 +754,6 @@
             </div>
           </div>
 
-          <!-- Selector de idioma en cuenta -->
           <div class="rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 flex items-center justify-between gap-2 text-xs">
             <span id="lblAccountLanguage" class="text-zinc-300 font-medium">Idioma de la aplicación</span>
             <select id="accountLanguageSelect" onchange="changeAppLanguage(this.value)" class="rounded-lg bg-[#141720] border border-zinc-700 px-2.5 py-1 text-zinc-100 font-mono text-[11px] focus:outline-none focus:border-amber-500 cursor-pointer">
@@ -634,7 +763,6 @@
             </select>
           </div>
 
-          <!-- Código / ID único de músico para invitaciones a bandas -->
           <div class="rounded-xl bg-[#0b0d12] border border-amber-500/30 px-3 py-2 flex items-center justify-between gap-2 text-xs">
             <div class="min-w-0">
               <span id="lblMyUniqueCode" class="block font-mono text-[10px] uppercase text-amber-400">Mi ID único de músico</span>
@@ -669,7 +797,7 @@
           </div>
         </div>
 
-        <!-- Invitaciones a bandas pendientes para este usuario -->
+        <!-- Invitaciones a bandas pendientes -->
         <div id="pendingBandInvitationsCard" class="hidden rounded-2xl bg-[#161923] border border-rose-500/40 p-4 space-y-2.5 text-xs">
           <div class="flex items-center justify-between">
             <span class="font-mono text-[10px] uppercase tracking-wider text-rose-300 flex items-center gap-1.5">
@@ -680,7 +808,7 @@
           <div id="pendingBandInvitationsList" class="space-y-2"></div>
         </div>
 
-        <!-- Ficha de "Mis bandas" + editor de banda + opción abandonar -->
+        <!-- Ficha de "Mis bandas" + editor de banda + abandono con designación -->
         <div class="rounded-2xl bg-[#111318] border border-zinc-800/90 p-4 space-y-2.5 text-xs">
           <div class="flex items-center justify-between">
             <h2 id="myBandsHeading" class="font-display text-sm font-bold text-zinc-100">Mis bandas</h2>
@@ -694,7 +822,6 @@
               <button type="button" onclick="cancelEditBand()" class="font-mono text-[10px] text-zinc-400 hover:text-white cursor-pointer">Cancelar</button>
             </div>
 
-            <!-- Foto de banda en edición -->
             <div class="rounded-lg bg-[#0b0d12] border border-zinc-800 p-2 space-y-1.5">
               <label class="block text-[10px] text-zinc-400">Foto de la banda</label>
               <div class="flex items-center gap-2">
@@ -710,11 +837,11 @@
 
             <div class="grid grid-cols-2 gap-2">
               <div>
-                <label class="block text-[10px] text-zinc-400 mb-1">Nombre</label>
+                <label class="block text-[10px] text-zinc-400 mb-1">Nombre *</label>
                 <input id="editBandName" type="text" required class="w-full rounded-lg bg-[#0b0d12] border border-zinc-800 px-2.5 py-1.5 text-zinc-100" />
               </div>
               <div>
-                <label class="block text-[10px] text-zinc-400 mb-1">Estado</label>
+                <label class="block text-[10px] text-zinc-400 mb-1">Estado *</label>
                 <select id="editBandStatus" class="w-full rounded-lg bg-[#0b0d12] border border-zinc-800 px-2.5 py-1.5 text-zinc-100">
                   <option value="BUSCA MÚSICO">BUSCA MÚSICO</option>
                   <option value="ACTIVA">ACTIVA</option>
@@ -722,8 +849,34 @@
                 </select>
               </div>
             </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[10px] text-zinc-400 mb-1">Nivel *</label>
+                <select id="editBandLevel" required class="w-full rounded-lg bg-[#0b0d12] border border-zinc-800 px-2.5 py-1.5 text-zinc-100">
+                  <option value="Principiante / Local">Principiante / Local</option>
+                  <option value="Intermedio">Intermedio</option>
+                  <option value="Avanzado / Directo">Avanzado / Directo</option>
+                  <option value="Sesión / Pro">Sesión / Pro</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[10px] text-zinc-400 mb-1">Franja horaria ensayo *</label>
+                <input id="editBandTimeSlot" type="text" required class="w-full rounded-lg bg-[#0b0d12] border border-zinc-800 px-2.5 py-1.5 text-zinc-100" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[10px] text-zinc-400 mb-1">Días de ensayo *</label>
+              <div id="editBandDaysChecks" class="flex flex-wrap gap-1.5"></div>
+              <label class="mt-2 inline-flex items-center gap-2 text-[11px] text-zinc-300 cursor-pointer">
+                <input id="editBandFlexible" type="checkbox" class="rounded border-zinc-600 bg-zinc-900 text-amber-500 cursor-pointer" />
+                <span>Horario / días flexibles o adaptables</span>
+              </label>
+            </div>
+
             <div class="relative">
-              <label class="block text-[10px] text-zinc-400 mb-1">Estilos</label>
+              <label class="block text-[10px] text-zinc-400 mb-1">Estilos *</label>
               <button
                 type="button"
                 onclick="toggleMultiSelectDropdown('editBandStylesDropdown')"
@@ -740,7 +893,7 @@
             </div>
             <div class="grid grid-cols-2 gap-2">
               <div class="relative">
-                <label class="block text-[10px] text-zinc-400 mb-1">Ciudad / Zona</label>
+                <label class="block text-[10px] text-zinc-400 mb-1">Ciudad / Zona *</label>
                 <input id="editBandZone" type="text" required autocomplete="off" data-city-autocomplete="editBandZoneSuggestions" class="w-full rounded-lg bg-[#0b0d12] border border-zinc-800 px-2.5 py-1.5 text-zinc-100" />
                 <div id="editBandZoneSuggestions" class="hidden city-suggestions-menu absolute left-0 right-0 mt-1 z-50 rounded-xl bg-[#141720] border border-zinc-700 shadow-2xl divide-y divide-zinc-800"></div>
               </div>
@@ -750,16 +903,16 @@
               </div>
             </div>
             <div>
-              <label class="block text-[10px] text-zinc-400 mb-1">Influencias</label>
-              <input id="editBandInfluences" type="text" class="w-full rounded-lg bg-[#0b0d12] border border-zinc-800 px-2.5 py-1.5 text-zinc-100" />
+              <label class="block text-[10px] text-zinc-400 mb-1">Influencias *</label>
+              <input id="editBandInfluences" type="text" required class="w-full rounded-lg bg-[#0b0d12] border border-zinc-800 px-2.5 py-1.5 text-zinc-100" />
             </div>
             <div>
-              <label class="block text-[10px] text-zinc-400 mb-1">Días y local de ensayo</label>
-              <input id="editBandSchedule" type="text" class="w-full rounded-lg bg-[#0b0d12] border border-zinc-800 px-2.5 py-1.5 text-zinc-100" />
+              <label class="block text-[10px] text-zinc-400 mb-1">Local / notas de ensayo *</label>
+              <input id="editBandSchedule" type="text" required class="w-full rounded-lg bg-[#0b0d12] border border-zinc-800 px-2.5 py-1.5 text-zinc-100" />
             </div>
             <div>
-              <label class="block text-[10px] text-zinc-400 mb-1">Descripción / Bio</label>
-              <textarea id="editBandTagline" rows="2" class="w-full rounded-lg bg-[#0b0d12] border border-zinc-800 px-2.5 py-1.5 text-zinc-100"></textarea>
+              <label class="block text-[10px] text-zinc-400 mb-1">Descripción / Bio *</label>
+              <textarea id="editBandTagline" rows="2" required class="w-full rounded-lg bg-[#0b0d12] border border-zinc-800 px-2.5 py-1.5 text-zinc-100"></textarea>
             </div>
             <div class="rounded-lg bg-[#0b0d12] border border-zinc-800 p-2 space-y-1.5">
               <span class="block font-mono text-[10px] text-amber-400">YouTube · Instagram · Bandcamp · Spotify</span>
@@ -830,7 +983,7 @@
             </div>
             <div class="relative">
               <label class="block text-zinc-400 mb-1">Ciudad / Zona</label>
-              <input id="editAccZone" type="text" required autocomplete="off" data-city-autocomplete="editAccZoneSuggestions" placeholder="Escribe ciudad..." class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100 focus:outline-none focus:border-amber-500" />
+              <input id="editAccZone" type="text" required autocomplete="off" data-city-autocomplete="editAccZoneSuggestions" placeholder="Escribe ciudad en España..." class="w-full rounded-xl bg-[#0b0d12] border border-zinc-800 px-3 py-2 text-zinc-100 focus:outline-none focus:border-amber-500" />
               <div id="editAccZoneSuggestions" class="hidden city-suggestions-menu absolute left-0 right-0 mt-1 z-50 rounded-xl bg-[#141720] border border-zinc-700 shadow-2xl divide-y divide-zinc-800"></div>
             </div>
           </div>
@@ -930,8 +1083,11 @@
     const rtdb = getDatabase(app);
     const googleProvider = new GoogleAuthProvider();
 
-    // --- MULTIIDIOMA (ES / CA / EN) ---
+    const DAYS_OF_WEEK = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const LEVELS_CATALOG = ['Principiante / Local', 'Intermedio', 'Avanzado / Directo', 'Sesión / Pro'];
+
     let currentLang = localStorage.getItem('musicmate_lang') || 'es';
+    let isGuestSession = false;
 
     const I18N = {
       es: {
@@ -974,7 +1130,7 @@
         confirmLeaveBand: '¿Seguro que quieres abandonar esta banda?',
         confirmDeleteBand: '¿Seguro que quieres eliminar esta banda de forma permanente?',
         confirmDeleteAd: '¿Eliminar este anuncio?',
-        invalidUrlMsg: 'Revisa los enlaces sociales: introduce una URL válida (ej. https://instagram.com/tubanda).'
+        guestBlockedMsg: 'Estás en modo invitado (solo lectura). Inicia sesión o regístrate para realizar esta acción.'
       },
       ca: {
         gateTagline: 'Connecta amb músics i bandes a prop teu per assajar, muntar projectes i tocar en directe.',
@@ -1016,7 +1172,7 @@
         confirmLeaveBand: 'Segur que vols abandonar aquesta banda?',
         confirmDeleteBand: 'Segur que vols eliminar aquesta banda permanentment?',
         confirmDeleteAd: 'Vols eliminar aquest anunci?',
-        invalidUrlMsg: 'Revisa els enllaços socials: introdueix una URL vàlida (ex. https://instagram.com/labanda).'
+        guestBlockedMsg: 'Ets en mode convidat (només lectura). Inicia sessió o registra’t per fer aquesta acció.'
       },
       en: {
         gateTagline: 'Connect with musicians and bands near you to rehearse, start projects, and play live.',
@@ -1058,13 +1214,38 @@
         confirmLeaveBand: 'Are you sure you want to leave this band?',
         confirmDeleteBand: 'Are you sure you want to permanently delete this band?',
         confirmDeleteAd: 'Delete this listing?',
-        invalidUrlMsg: 'Check social links: enter a valid URL (e.g. https://instagram.com/yourband).'
+        guestBlockedMsg: 'You are in guest mode (read-only). Sign in or sign up to perform this action.'
       }
     };
 
     function t(key) {
       return (I18N[currentLang] && I18N[currentLang][key]) || I18N.es[key] || key;
     }
+
+    function requireAuthenticated(actionLabel = '') {
+      if (firebaseUser && !isGuestSession) return true;
+      showAppNotice(t('guestBlockedMsg') + (actionLabel ? ` (${actionLabel})` : ''));
+      return false;
+    }
+
+    window.promptGuestMode = function promptGuestMode() {
+      clearGateError();
+      document.getElementById('guestNoticeBox')?.classList.remove('hidden');
+    };
+
+    window.cancelGuestMode = function cancelGuestMode() {
+      document.getElementById('guestNoticeBox')?.classList.add('hidden');
+    };
+
+    window.confirmGuestMode = function confirmGuestMode() {
+      isGuestSession = true;
+      document.getElementById('guestNoticeBox')?.classList.add('hidden');
+      setShellVisible(true);
+      startPublicReadListeners();
+      updateAccountHeaderCard();
+      window.switchTab('explore');
+      showAppNotice('Modo invitado activo: solo lectura de anuncios y bandas.');
+    };
 
     function applyTranslations() {
       const setTxt = (id, key) => {
@@ -1119,12 +1300,11 @@
       currentLang = lang;
       localStorage.setItem('musicmate_lang', lang);
       applyTranslations();
-      if (firebaseUser) {
+      if (firebaseUser && !isGuestSession) {
         await setDoc(doc(db, 'users', firebaseUser.uid), { language: lang }, { merge: true }).catch(() => {});
       }
     };
 
-    // --- TRADUCCIÓN DE ERRORES DE FIREBASE ---
     function formatFirebaseError(err) {
       const code = err?.code || '';
       const raw = String(err?.message || '');
@@ -1148,8 +1328,8 @@
       return raw || 'Ha ocurrido un error inesperado.';
     }
 
-    // --- AUTOCOMPLETADOR DE CIUDAD ---
-    const CITIES_CATALOG = [
+    // --- AUTOCOMPLETADOR DE CIUDAD (PRIORIZANDO ESPAÑA) ---
+    const SPAIN_CITIES = [
       'Barcelona', 'Madrid', 'Valencia', 'Sevilla', 'Zaragoza', 'Málaga', 'Murcia', 'Palma',
       'Las Palmas de Gran Canaria', 'Bilbao', 'Alicante', 'Córdoba', 'Valladolid', 'Vigo',
       'Gijón', 'Hospitalet de Llobregat', 'Vitoria-Gasteiz', 'A Coruña', 'Elche', 'Granada',
@@ -1159,13 +1339,11 @@
       'Castellón de la Plana', 'Alcorcón', 'San Cristóbal de La Laguna', 'Logroño', 'Badajoz',
       'Salamanca', 'Huelva', 'Marbella', 'Lleida', 'Tarragona', 'León', 'Cádiz', 'Jaén',
       'Mataró', 'Santa Coloma de Gramenet', 'Reus', 'Girona', 'Sant Cugat del Vallès',
-      'Rubí', 'Manresa', 'Granollers', 'Cerdanyola del Vallès', 'Mollet del Vallès',
-      'London', 'Manchester', 'Berlin', 'Hamburg', 'Paris', 'Lyon', 'Lisbon', 'Porto',
-      'Rome', 'Milan', 'Amsterdam', 'Brussels', 'Dublin', 'Stockholm', 'New York', 'Los Angeles',
-      'Austin', 'Nashville', 'Chicago', 'Toronto', 'Mexico City', 'Buenos Aires', 'Bogotá', 'Santiago'
+      'Rubí', 'Manresa', 'Granollers', 'Cerdanyola del Vallès', 'Mollet del Vallès'
     ];
 
     let cityFetchTimer = null;
+    let cityAbortController = null;
 
     function attachCityAutocomplete(inputEl) {
       const boxId = inputEl.getAttribute('data-city-autocomplete');
@@ -1192,6 +1370,7 @@
           btn.addEventListener('click', () => {
             inputEl.value = btn.getAttribute('data-city-val') || '';
             box.classList.add('hidden');
+            if (inputEl.id === 'filterCityInput') renderFeed();
           });
         });
       };
@@ -1203,20 +1382,25 @@
           return;
         }
         const qLow = q.toLowerCase();
-        const localMatches = CITIES_CATALOG.filter((c) => c.toLowerCase().includes(qLow)).slice(0, 6);
+        const localMatches = SPAIN_CITIES
+          .filter((c) => c.toLowerCase().includes(qLow))
+          .slice(0, 6)
+          .map((c) => `${c} (ES)`);
         renderSuggestions(localMatches);
 
         clearTimeout(cityFetchTimer);
         cityFetchTimer = setTimeout(async () => {
+          if (cityAbortController) cityAbortController.abort();
+          cityAbortController = new AbortController();
           try {
-            const resp = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=${currentLang}&format=json`);
+            const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=es&countryCode=ES&format=json`;
+            const resp = await fetch(url, { signal: cityAbortController.signal });
             if (!resp.ok) return;
             const data = await resp.json();
             if (Array.isArray(data.results) && data.results.length) {
               const apiCities = data.results.map((r) => {
                 const admin = r.admin1 && r.admin1 !== r.name ? `, ${r.admin1}` : '';
-                const country = r.country_code ? ` (${r.country_code})` : '';
-                return `${r.name}${admin}${country}`;
+                return `${r.name}${admin} (ES)`;
               });
               const merged = Array.from(new Set([...apiCities, ...localMatches])).slice(0, 7);
               if (document.activeElement === inputEl) {
@@ -1224,7 +1408,7 @@
               }
             }
           } catch (_) {}
-        }, 260);
+        }, 240);
       });
     }
 
@@ -1236,7 +1420,6 @@
         .replace(/"/g, '&quot;');
     }
 
-    // --- VALIDACIÓN DE ENLACES SOCIALES ---
     function validateAndNormalizeUrl(rawUrl, expectedDomains = []) {
       const clean = String(rawUrl || '').trim();
       if (!clean) return { valid: true, url: '' };
@@ -1323,6 +1506,7 @@
     };
 
     window.copyMyUniqueCode = async function copyMyUniqueCode() {
+      if (!requireAuthenticated('Copiar ID')) return;
       const code = activeUser.memberCode || buildUniqueMemberCode(firebaseUser?.uid || '');
       try {
         await navigator.clipboard.writeText(code);
@@ -1331,64 +1515,6 @@
         showAppNotice(`Tu ID único es: ${code}`);
       }
     };
-
-    const SEED_BANDS = [
-      {
-        name: 'BIRRAPIDAS',
-        styles: ['Punk Rock', 'Hard Rock'],
-        style: 'Punk Rock · Hard Rock',
-        influences: 'The Ramones, The Damned, Toy Dolls, La Polla Records',
-        zone: 'Sabadell, Catalonia (ES)',
-        schedule: 'Martes y Jueves · Sala de ensayo',
-        status: 'BUSCA MÚSICO',
-        tagline: 'Píldoras de 2 minutos a todo volumen: Hard Rock, Punk Rock y versiones aceleradas.',
-        contactEmail: 'birrapidas@musicmate.local',
-        photoUrl: '',
-        links: { youtube: '', instagram: '', bandcamp: '', spotify: '' },
-        members: ['Alex · Guitarra', 'Toni · Batería'],
-        membersDetailed: []
-      },
-      {
-        name: 'KILOVATIO DESERT',
-        styles: ['Stoner', 'Hard Rock'],
-        style: 'Stoner · Hard Rock',
-        influences: 'Kyuss, Queens of the Stone Age, Fu Manchu, Sleep',
-        zone: 'Terrassa, Catalonia (ES)',
-        schedule: 'Miércoles tarde · Sala equipada',
-        status: 'BUSCA MÚSICO',
-        tagline: 'Riffs pesados, afinación baja y temas instrumentales largos con voz rasgada.',
-        contactEmail: 'kilovatio@musicmate.local',
-        photoUrl: '',
-        links: { youtube: '', instagram: '', bandcamp: '', spotify: '' },
-        members: ['Marc · Bajo y Voz', 'Pol · Guitarra'],
-        membersDetailed: []
-      }
-    ];
-
-    const SEED_ADS = [
-      {
-        type: 'Buscar músico',
-        status: 'open',
-        title: 'Birrapidas busca bajista con actitud para punk/hard rock rápido',
-        author: 'BIRRAPIDAS',
-        instrument: 'Bajo eléctrico',
-        styles: ['Punk Rock', 'Hard Rock'],
-        zone: 'Sabadell, Catalonia (ES)',
-        desc: 'Ensayos martes y jueves de 20:00 a 22:30. Temas propios de 2 min y versiones aceleradas.',
-        contactEmail: 'birrapidas@musicmate.local'
-      },
-      {
-        type: 'Buscar banda',
-        status: 'open',
-        title: 'Batería disponible con equipo propio para ensayos y bolos',
-        author: 'Carla Solé · CarlaBeats',
-        instrument: 'Batería',
-        styles: ['Indie Rock', 'Punk Rock'],
-        zone: 'Barcelona, Catalonia (ES)',
-        desc: 'Batería acústica completa y transporte propio. Busco banda activa con ensayos entre semana o findes.',
-        contactEmail: 'carla@musicmate.local'
-      }
-    ];
 
     let firebaseUser = null;
     let bands = [];
@@ -1418,9 +1544,9 @@
       name: 'Músico',
       alias: 'Músico',
       instrument: 'Guitarra eléctrica',
-      zone: 'Barcelona, Catalonia (ES)',
-      stylesList: ['Hard Rock', 'Punk Rock'],
-      styles: 'Hard Rock · Punk Rock',
+      zone: '',
+      stylesList: [],
+      styles: '',
       influences: '',
       photoUrl: '',
       bio: '',
@@ -1441,11 +1567,12 @@
 
     let selectedFilterStyles = [];
     let selectedFilterInstruments = [];
-    let selectedPublishInstruments = ['Bajo eléctrico'];
-    let selectedPublishStyles = ['Punk Rock'];
-    let selectedNewBandStyles = ['Punk Rock'];
-    let selectedEditBandStyles = ['Punk Rock'];
-    let selectedProfileStyles = ['Hard Rock', 'Punk Rock'];
+    let selectedFilterDays = [];
+    let selectedPublishInstruments = [];
+    let selectedPublishStyles = [];
+    let selectedNewBandStyles = [];
+    let selectedEditBandStyles = [];
+    let selectedProfileStyles = [];
 
     let customFilterStyleText = '';
     let customFilterInstrumentText = '';
@@ -1455,6 +1582,44 @@
     let customEditBandStyleText = '';
     let customProfileStyleText = '';
     let gateFormMode = 'login';
+
+    function renderDayCheckboxes(containerId, prefix, preselected = []) {
+      const box = document.getElementById(containerId);
+      if (!box) return;
+      box.innerHTML = DAYS_OF_WEEK.map((day, idx) => {
+        const checked = preselected.includes(day);
+        return `
+          <label class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[#0b0d12] border border-zinc-800 text-[11px] text-zinc-200 cursor-pointer">
+            <input type="checkbox" data-day-prefix="${prefix}" value="${escapeHtml(day)}" ${checked ? 'checked' : ''} class="rounded border-zinc-600 bg-zinc-900 text-amber-500 cursor-pointer" />
+            <span>${escapeHtml(day.slice(0, 3))}</span>
+          </label>
+        `;
+      }).join('');
+    }
+
+    function getCheckedDays(prefix) {
+      return Array.from(document.querySelectorAll(`input[type="checkbox"][data-day-prefix="${prefix}"]:checked`))
+        .map((el) => el.value);
+    }
+
+    function setCheckedDays(prefix, daysArr = []) {
+      const set = new Set((daysArr || []).map((d) => String(d).toLowerCase()));
+      document.querySelectorAll(`input[type="checkbox"][data-day-prefix="${prefix}"]`).forEach((el) => {
+        el.checked = set.has(el.value.toLowerCase());
+      });
+    }
+
+    function formatRehearsalSummary(item) {
+      const days = Array.isArray(item?.rehearsalDays) ? item.rehearsalDays : [];
+      const slot = String(item?.rehearsalTimeSlot || '').trim();
+      const flex = Boolean(item?.rehearsalFlexible);
+      const parts = [];
+      if (days.length) parts.push(days.map((d) => d.slice(0, 3)).join(', '));
+      if (slot) parts.push(slot);
+      if (flex) parts.push('Flexible');
+      if (parts.length) return parts.join(' · ');
+      return item?.schedule || 'Horario por definir';
+    }
 
     function formatRelativeTime(ts) {
       if (!ts) return 'Ahora';
@@ -1493,14 +1658,18 @@
       });
     }
 
-    function setAuthGateVisible(isLoggedIn) {
+    function setShellVisible(visible) {
       const gate = document.getElementById('authGateScreen');
       const shell = document.getElementById('appShell');
-      if (gate) gate.classList.toggle('hidden', isLoggedIn);
-      if (shell) shell.classList.toggle('hidden', !isLoggedIn);
+      if (gate) gate.classList.toggle('hidden', visible);
+      if (shell) shell.classList.toggle('hidden', !visible);
     }
 
     window.switchTab = function switchTab(tabName) {
+      if (isGuestSession && (tabName === 'messages' || tabName === 'account' || tabName === 'publish')) {
+        return requireAuthenticated(tabName === 'messages' ? 'Mensajes' : tabName === 'account' ? 'Cuenta' : 'Publicar');
+      }
+
       const views = {
         explore: document.getElementById('viewExplore'),
         community: document.getElementById('viewCommunity'),
@@ -1545,16 +1714,19 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    // --- PUBLICAR Y EDITAR ANUNCIOS ---
     window.openPublishView = function openPublishView() {
+      if (!requireAuthenticated('Publicar anuncio')) return;
       editingAdId = null;
       document.getElementById('publishFormHeading').textContent = 'Nuevo anuncio';
       document.getElementById('btnSubmitPublishForm').textContent = 'Publicar anuncio';
       document.getElementById('quickPublishForm')?.reset();
+      document.getElementById('pubType').value = 'Buscar banda';
       document.getElementById('pubStatus').value = 'open';
-      document.getElementById('pubZone').value = activeUser.zone || '';
-      selectedPublishInstruments = [activeUser.instrument || 'Bajo eléctrico'];
-      selectedPublishStyles = activeUser.stylesList?.length ? [...activeUser.stylesList] : ['Punk Rock'];
+      document.getElementById('pubLevel').value = 'Intermedio';
+      document.getElementById('pubZone').value = '';
+      setCheckedDays('pub', []);
+      selectedPublishInstruments = [];
+      selectedPublishStyles = [];
       customPublishInstrumentText = '';
       customPublishStyleText = '';
       renderMultiSelectControls();
@@ -1563,6 +1735,7 @@
     };
 
     window.startEditAd = function startEditAd(adId) {
+      if (!requireAuthenticated('Editar anuncio')) return;
       const ad = ads.find((item) => item.id === adId);
       if (!ad || !firebaseUser) return;
       editingAdId = adId;
@@ -1572,9 +1745,16 @@
       const normType = matchesAdCategory(ad, 'Buscar banda') ? 'Buscar banda' : 'Buscar músico';
       document.getElementById('pubType').value = normType;
       document.getElementById('pubStatus').value = ad.status || 'open';
+      document.getElementById('pubLevel').value = ad.level || 'Intermedio';
+      document.getElementById('pubTimeSlot').value = ad.rehearsalTimeSlot || '';
+      document.getElementById('pubFlexible').checked = Boolean(ad.rehearsalFlexible);
+      setCheckedDays('pub', ad.rehearsalDays || []);
+
       syncPublishBandSelector();
       if (ad.bandId && document.getElementById('pubBandSelect')) {
         document.getElementById('pubBandSelect').value = ad.bandId;
+      } else if (normType === 'Buscar músico' && document.getElementById('pubBandSelect')) {
+        document.getElementById('pubBandSelect').value = '__FORMING__';
       }
 
       document.getElementById('pubTitle').value = ad.title || '';
@@ -1583,8 +1763,8 @@
       document.getElementById('pubDesc').value = ad.desc || '';
 
       const instArr = String(ad.instrument || '').split('/').map((s) => s.trim()).filter(Boolean);
-      selectedPublishInstruments = instArr.length ? instArr : ['Guitarra eléctrica'];
-      selectedPublishStyles = Array.isArray(ad.styles) && ad.styles.length ? [...ad.styles] : ['Rock Alternativo'];
+      selectedPublishInstruments = instArr;
+      selectedPublishStyles = Array.isArray(ad.styles) ? [...ad.styles] : [];
       customPublishInstrumentText = '';
       customPublishStyleText = '';
       renderMultiSelectControls();
@@ -1597,7 +1777,7 @@
     };
 
     window.updateAdStatusQuick = async function updateAdStatusQuick(adId, newStatus) {
-      if (!firebaseUser) return;
+      if (!requireAuthenticated('Cambiar estado')) return;
       try {
         await updateDoc(doc(db, 'ads', adId), {
           status: newStatus,
@@ -1652,10 +1832,15 @@
     window.clearAllFeedFilters = function clearAllFeedFilters() {
       selectedFilterStyles = [];
       selectedFilterInstruments = [];
+      selectedFilterDays = [];
       customFilterStyleText = '';
       customFilterInstrumentText = '';
       const stSel = document.getElementById('filterAdStatusSelect');
       if (stSel) stSel.value = '';
+      const lvlSel = document.getElementById('filterLevelSelect');
+      if (lvlSel) lvlSel.value = '';
+      const cityIn = document.getElementById('filterCityInput');
+      if (cityIn) cityIn.value = '';
       const bChk = document.getElementById('filterBandLinkedOnly');
       if (bChk) bChk.checked = false;
       renderMultiSelectControls();
@@ -1673,6 +1858,7 @@
     function getSelectionArrayRef(groupKey) {
       if (groupKey === 'filterStyles') return selectedFilterStyles;
       if (groupKey === 'filterInstruments') return selectedFilterInstruments;
+      if (groupKey === 'filterDays') return selectedFilterDays;
       if (groupKey === 'publishInstruments') return selectedPublishInstruments;
       if (groupKey === 'newBandStyles') return selectedNewBandStyles;
       if (groupKey === 'editBandStyles') return selectedEditBandStyles;
@@ -1683,6 +1869,7 @@
     function setSelectionArrayRef(groupKey, nextArr) {
       if (groupKey === 'filterStyles') selectedFilterStyles = nextArr;
       else if (groupKey === 'filterInstruments') selectedFilterInstruments = nextArr;
+      else if (groupKey === 'filterDays') selectedFilterDays = nextArr;
       else if (groupKey === 'publishInstruments') selectedPublishInstruments = nextArr;
       else if (groupKey === 'newBandStyles') selectedNewBandStyles = nextArr;
       else if (groupKey === 'editBandStyles') selectedEditBandStyles = nextArr;
@@ -1698,7 +1885,7 @@
         exists ? current.filter((item) => item.toLowerCase() !== optionValue.toLowerCase()) : [...current, optionValue]
       );
       renderMultiSelectControls();
-      if (groupKey === 'filterStyles' || groupKey === 'filterInstruments') {
+      if (groupKey === 'filterStyles' || groupKey === 'filterInstruments' || groupKey === 'filterDays') {
         renderFeed();
       }
     };
@@ -1707,7 +1894,7 @@
       const current = getSelectionArrayRef(groupKey);
       setSelectionArrayRef(groupKey, current.filter((item) => item.toLowerCase() !== optionValue.toLowerCase()));
       renderMultiSelectControls();
-      if (groupKey === 'filterStyles' || groupKey === 'filterInstruments') {
+      if (groupKey === 'filterStyles' || groupKey === 'filterInstruments' || groupKey === 'filterDays') {
         renderFeed();
       }
     };
@@ -1731,17 +1918,18 @@
       return hasOther && customParts.length > 0 ? [...cleaned, ...customParts] : cleaned;
     }
 
-    function buildDropdownHtml(groupKey, options, currentSelected, emptyLabel, customVal) {
+    function buildDropdownHtml(groupKey, options, currentSelected, emptyLabel, customVal = '', allowCustomOther = true) {
       const dropdownIds = {
         filterStyles: 'filterStylesDropdown',
         filterInstruments: 'filterInstrumentsDropdown',
+        filterDays: 'filterDaysDropdown',
         publishInstruments: 'pubInstrumentsDropdown',
         publishStyles: 'pubStylesDropdown',
         newBandStyles: 'newBandStylesDropdown',
         editBandStyles: 'editBandStylesDropdown',
         profileStyles: 'profileStylesDropdown'
       };
-      const hasOtherChecked = (currentSelected || []).some((s) => String(s).toLowerCase() === 'otro');
+      const hasOtherChecked = allowCustomOther && (currentSelected || []).some((s) => String(s).toLowerCase() === 'otro');
       const itemsHtml = options.map((opt) => {
         const checked = (currentSelected || []).some((s) => String(s).toLowerCase() === opt.toLowerCase());
         return `
@@ -1786,6 +1974,7 @@
     function renderMultiSelectControls(skipDropdownHtmlRebuild = false) {
       const rFilterStyles = resolveSelectedValues(selectedFilterStyles, customFilterStyleText);
       const rFilterInst = resolveSelectedValues(selectedFilterInstruments, customFilterInstrumentText);
+      const rFilterDays = [...selectedFilterDays];
       const rPubInst = resolveSelectedValues(selectedPublishInstruments, customPublishInstrumentText);
       const rPubStyles = resolveSelectedValues(selectedPublishStyles, customPublishStyleText);
       const rNewBandStyles = resolveSelectedValues(selectedNewBandStyles, customNewBandStyleText);
@@ -1796,6 +1985,9 @@
       if (fStylesText) fStylesText.textContent = rFilterStyles.length ? rFilterStyles.join(', ') : 'Todos los estilos';
       const fInstText = document.getElementById('filterInstrumentsTriggerText');
       if (fInstText) fInstText.textContent = rFilterInst.length ? rFilterInst.join(', ') : 'Todos los instr.';
+      const fDaysText = document.getElementById('filterDaysTriggerText');
+      if (fDaysText) fDaysText.textContent = rFilterDays.length ? rFilterDays.map((d) => d.slice(0, 3)).join(', ') : 'Cualquier día';
+
       const pInstText = document.getElementById('pubInstrumentsTriggerText');
       if (pInstText) pInstText.textContent = rPubInst.length ? rPubInst.join(', ') : 'Selecciona uno o más instrumentos';
       const pStylesText = document.getElementById('pubStylesTriggerText');
@@ -1808,8 +2000,12 @@
       if (prStylesText) prStylesText.textContent = rProfileStyles.length ? rProfileStyles.join(', ') : 'Selecciona estilos';
 
       const statusFilterVal = document.getElementById('filterAdStatusSelect')?.value || '';
+      const levelFilterVal = document.getElementById('filterLevelSelect')?.value || '';
+      const cityFilterVal = (document.getElementById('filterCityInput')?.value || '').trim();
       const bandOnlyChecked = Boolean(document.getElementById('filterBandLinkedOnly')?.checked);
-      const totalActiveFilters = rFilterStyles.length + rFilterInst.length + (statusFilterVal ? 1 : 0) + (bandOnlyChecked ? 1 : 0);
+
+      const totalActiveFilters = rFilterStyles.length + rFilterInst.length + rFilterDays.length +
+        (statusFilterVal ? 1 : 0) + (levelFilterVal ? 1 : 0) + (cityFilterVal ? 1 : 0) + (bandOnlyChecked ? 1 : 0);
 
       const badgeEl = document.getElementById('activeFiltersBadge');
       if (badgeEl) badgeEl.textContent = totalActiveFilters > 0 ? `${t('filtersBtn')} (${totalActiveFilters})` : t('filtersBtn');
@@ -1818,7 +2014,8 @@
       if (chipsBar) {
         const combined = [
           ...rFilterStyles.map((v) => ({ group: 'filterStyles', val: v })),
-          ...rFilterInst.map((v) => ({ group: 'filterInstruments', val: v }))
+          ...rFilterInst.map((v) => ({ group: 'filterInstruments', val: v })),
+          ...rFilterDays.map((v) => ({ group: 'filterDays', val: v }))
         ];
         chipsBar.innerHTML = combined.length
           ? combined.map((item) => `
@@ -1827,7 +2024,7 @@
                 <button type="button" onclick="removeSelectedTag('${item.group}', '${escapeHtml(item.val).replace(/'/g, "\\'")}')" class="font-mono hover:text-white cursor-pointer">×</button>
               </span>
             `).join('')
-          : `<span class="text-[10px] text-zinc-500">Sin filtros extra</span>`;
+          : `<span class="text-[10px] text-zinc-500">Sin etiquetas activas</span>`;
       }
 
       if (!skipDropdownHtmlRebuild) {
@@ -1835,6 +2032,8 @@
         if (d1) d1.innerHTML = buildDropdownHtml('filterStyles', CATALOG_STYLES, selectedFilterStyles, 'Todos', customFilterStyleText);
         const d2 = document.getElementById('filterInstrumentsDropdown');
         if (d2) d2.innerHTML = buildDropdownHtml('filterInstruments', CATALOG_INSTRUMENTS, selectedFilterInstruments, 'Todos', customFilterInstrumentText);
+        const dDays = document.getElementById('filterDaysDropdown');
+        if (dDays) dDays.innerHTML = buildDropdownHtml('filterDays', DAYS_OF_WEEK, selectedFilterDays, 'Todos', '', false);
         const d3 = document.getElementById('pubInstrumentsDropdown');
         if (d3) d3.innerHTML = buildDropdownHtml('publishInstruments', CATALOG_INSTRUMENTS, selectedPublishInstruments, 'Ninguno', customPublishInstrumentText);
         const d4 = document.getElementById('pubStylesDropdown');
@@ -1877,6 +2076,14 @@
       return `<span class="${textClass} font-bold text-amber-400">${escapeHtml(getInitials(userObj?.name))}</span>`;
     }
 
+    function canUserManageBand(band, uid) {
+      if (!band || !uid) return false;
+      if (band.ownerUid && band.ownerUid === uid) return true;
+      if (Array.isArray(band.memberUids) && band.memberUids.includes(uid)) return true;
+      if (Array.isArray(band.membersDetailed) && band.membersDetailed.some((m) => m.uid === uid)) return true;
+      return false;
+    }
+
     function getBandsForUser(uid, userName = '') {
       if (!uid) return [];
       const cleanName = String(userName || '').split('·')[0].trim().toLowerCase();
@@ -1893,7 +2100,7 @@
     }
 
     function getUserBands() {
-      if (!firebaseUser) return [];
+      if (!firebaseUser || isGuestSession) return [];
       return getBandsForUser(firebaseUser.uid, activeUser.name);
     }
 
@@ -1909,21 +2116,20 @@
       if (!isSeekingMusician) return;
 
       const myBands = getUserBands();
-      if (!myBands.length) {
-        sel.innerHTML = `<option value="">No tienes bandas creadas ni eres integrante</option>`;
-        if (helper) helper.textContent = 'Solo puedes publicar como banda en bandas que hayas creado o donde toques.';
-        return;
-      }
-
-      sel.innerHTML = myBands.map((b) => {
+      const bandOpts = myBands.map((b) => {
         const roleLabel = b.ownerUid === firebaseUser?.uid ? 'Creada por ti' : 'Integrante';
         return `<option value="${escapeHtml(b.id)}">${escapeHtml(b.name)} (${escapeHtml(roleLabel)}) · ${escapeHtml(b.zone || '')}</option>`;
-      }).join('');
+      });
+      bandOpts.push(`<option value="__FORMING__">Proyecto en formación (aún sin banda registrada)</option>`);
 
-      if (helper) helper.textContent = 'Solo aparecen las bandas creadas por ti o en las que tocas.';
+      sel.innerHTML = bandOpts.join('');
+      if (helper) {
+        helper.textContent = myBands.length
+          ? 'Elige una de tus bandas o publica como proyecto en formación.'
+          : 'No tienes bandas registradas aún: puedes publicar como proyecto en formación.';
+      }
     };
 
-    // --- VISTA DEDICADA DE BANDA + GESTIÓN DE MIEMBROS + ABANDONAR ---
     window.openBandProfile = function openBandProfile(bandId) {
       selectedBandDetailId = bandId;
       window.switchTab('bandProfile');
@@ -1936,16 +2142,36 @@
     };
 
     window.leaveBand = async function leaveBand(bandId) {
-      if (!firebaseUser) return;
+      if (!requireAuthenticated('Abandonar banda')) return;
       const band = bands.find((b) => b.id === bandId);
       if (!band) return;
-
       if (!window.confirm(t('confirmLeaveBand'))) return;
 
-      try {
-        const existingDetailed = Array.isArray(band.membersDetailed) ? band.membersDetailed : [];
-        const updatedDetailed = existingDetailed.filter((m) => m.uid !== firebaseUser.uid);
+      const existingDetailed = Array.isArray(band.membersDetailed) ? band.membersDetailed : [];
+      const otherMembers = existingDetailed.filter((m) => m.uid && m.uid !== firebaseUser.uid);
 
+      let nextOwnerUid = band.ownerUid === firebaseUser.uid ? '' : (band.ownerUid || '');
+      if (band.ownerUid === firebaseUser.uid && otherMembers.length > 0) {
+        if (otherMembers.length === 1) {
+          nextOwnerUid = otherMembers[0].uid;
+        } else {
+          const choicesText = otherMembers
+            .map((m, idx) => `${idx + 1}: ${m.name} (${m.instrument || 'Músico'})`)
+            .join('\n');
+          const picked = window.prompt(
+            `Eres el administrador actual. Indica el número del integrante que asumirá la administración al salir:\n${choicesText}`,
+            '1'
+          );
+          const pickIdx = Number(picked) - 1;
+          if (!Number.isInteger(pickIdx) || pickIdx < 0 || pickIdx >= otherMembers.length) {
+            return showAppNotice('Debes designar a un integrante válido para abandonar la banda.');
+          }
+          nextOwnerUid = otherMembers[pickIdx].uid;
+        }
+      }
+
+      try {
+        const updatedDetailed = existingDetailed.filter((m) => m.uid !== firebaseUser.uid);
         const cleanMyName = String(activeUser.name || '').trim().toLowerCase();
         const existingStrings = Array.isArray(band.members) ? band.members : [];
         const updatedStrings = existingStrings.filter((s) => !String(s).toLowerCase().startsWith(cleanMyName));
@@ -1954,13 +2180,9 @@
           memberUids: arrayRemove(firebaseUser.uid),
           membersDetailed: updatedDetailed,
           members: updatedStrings,
+          ownerUid: nextOwnerUid,
           updatedAt: serverTimestamp()
         };
-
-        if (band.ownerUid === firebaseUser.uid) {
-          const nextOwner = updatedDetailed[0]?.uid || (Array.isArray(band.memberUids) ? band.memberUids.find((u) => u !== firebaseUser.uid) : '') || '';
-          patch.ownerUid = nextOwner;
-        }
 
         await updateDoc(doc(db, 'bands', bandId), patch);
         showAppNotice(`Has abandonado ${band.name}.`);
@@ -1973,9 +2195,9 @@
     };
 
     window.deleteBandCompletely = async function deleteBandCompletely(bandId) {
-      if (!firebaseUser) return;
+      if (!requireAuthenticated('Borrar banda')) return;
       const band = bands.find((b) => b.id === bandId);
-      if (!band || band.ownerUid !== firebaseUser.uid) return;
+      if (!band || !canUserManageBand(band, firebaseUser.uid)) return;
       if (!window.confirm(t('confirmDeleteBand'))) return;
 
       try {
@@ -1988,9 +2210,9 @@
     };
 
     window.removeBandMember = async function removeBandMember(bandId, targetUid, memberLabelFallback = '') {
-      if (!firebaseUser) return;
+      if (!requireAuthenticated('Quitar integrante')) return;
       const band = bands.find((b) => b.id === bandId);
-      if (!band) return;
+      if (!band || !canUserManageBand(band, firebaseUser.uid)) return;
 
       try {
         const detailed = Array.isArray(band.membersDetailed) ? band.membersDetailed : [];
@@ -2021,9 +2243,9 @@
     };
 
     window.updateBandMemberRole = async function updateBandMemberRole(bandId, targetUid, newInstrument) {
-      if (!firebaseUser || !targetUid) return;
+      if (!requireAuthenticated('Actualizar rol')) return;
       const band = bands.find((b) => b.id === bandId);
-      if (!band) return;
+      if (!band || !canUserManageBand(band, firebaseUser.uid) || !targetUid) return;
 
       try {
         const detailed = Array.isArray(band.membersDetailed) ? [...band.membersDetailed] : [];
@@ -2050,8 +2272,10 @@
     };
 
     window.startEditBand = function startEditBand(bandId) {
+      if (!requireAuthenticated('Editar banda')) return;
       const band = bands.find((b) => b.id === bandId);
-      if (!band) return;
+      if (!band || !canUserManageBand(band, firebaseUser.uid)) return;
+
       editingBandId = bandId;
       editBandTempPhotoUrl = band.photoUrl || '';
       window.switchTab('account');
@@ -2062,6 +2286,11 @@
       document.getElementById('editBandFormTitle').textContent = `Editar banda · ${band.name}`;
       document.getElementById('editBandName').value = band.name || '';
       document.getElementById('editBandStatus').value = band.status || 'ACTIVA';
+      document.getElementById('editBandLevel').value = band.level || 'Intermedio';
+      document.getElementById('editBandTimeSlot').value = band.rehearsalTimeSlot || '';
+      document.getElementById('editBandFlexible').checked = Boolean(band.rehearsalFlexible);
+      setCheckedDays('editBand', band.rehearsalDays || []);
+
       document.getElementById('editBandZone').value = band.zone || '';
       document.getElementById('editBandEmail').value = band.contactEmail || '';
       document.getElementById('editBandInfluences').value = band.influences || '';
@@ -2097,9 +2326,47 @@
       document.getElementById('editBandForm')?.classList.add('hidden');
     };
 
-    // --- INVITAR MÚSICO (COMPROBANDO DUPLICADOS Y MIEMBROS) ---
+    async function inviteSpecificUidToBand(band, targetUid, targetLabel, instrumentVal) {
+      if (!requireAuthenticated('Invitar músico')) return;
+      if (!canUserManageBand(band, firebaseUser.uid)) {
+        return showAppNotice('Solo los integrantes de la banda pueden enviar invitaciones.');
+      }
+      if (targetUid === firebaseUser.uid) {
+        return showAppNotice('No puedes invitarte a ti mismo.');
+      }
+      if (Array.isArray(band.memberUids) && band.memberUids.includes(targetUid)) {
+        return showAppNotice('Ese músico ya forma parte de esta banda.');
+      }
+
+      const dupQuery = query(
+        collection(db, 'bandInvitations'),
+        where('bandId', '==', band.id),
+        where('invitedUid', '==', targetUid),
+        where('status', '==', 'pending')
+      );
+      const dupSnap = await getDocs(dupQuery);
+      if (!dupSnap.empty) {
+        return showAppNotice('Ya existe una invitación pendiente para este músico en esta banda.');
+      }
+
+      await addDoc(collection(db, 'bandInvitations'), {
+        bandId: band.id,
+        bandName: band.name,
+        invitedUid: targetUid,
+        invitedCode: buildUniqueMemberCode(targetUid),
+        invitedName: targetLabel,
+        invitedByUid: firebaseUser.uid,
+        invitedByName: `${activeUser.name} · ${activeUser.alias}`,
+        instrument: instrumentVal,
+        status: 'pending',
+        createdAt: serverTimestamp()
+      });
+
+      showAppNotice(`Invitación enviada a ${targetLabel} para ${band.name} (${instrumentVal}).`);
+    }
+
     window.sendBandMemberInvitation = async function sendBandMemberInvitation(bandId) {
-      if (!firebaseUser) return;
+      if (!requireAuthenticated('Invitar por ID')) return;
       const band = bands.find((b) => b.id === bandId);
       if (!band) return;
 
@@ -2113,61 +2380,50 @@
       }
 
       try {
-        const usersSnap = await getDocs(collection(db, 'users'));
-        const matchedUserDoc = usersSnap.docs.find((d) => {
-          const u = d.data() || {};
-          const uCode = String(u.memberCode || buildUniqueMemberCode(d.id)).toUpperCase();
-          return uCode === rawCode || d.id.toUpperCase() === rawCode;
-        });
+        const usersSnap = await getDocs(query(collection(db, 'users'), where('memberCode', '==', rawCode)));
+        let matchedUserDoc = usersSnap.docs[0] || null;
+        if (!matchedUserDoc) {
+          const fallbackSnap = await getDocs(collection(db, 'users'));
+          matchedUserDoc = fallbackSnap.docs.find((d) => {
+            const uCode = String(d.data()?.memberCode || buildUniqueMemberCode(d.id)).toUpperCase();
+            return uCode === rawCode || d.id.toUpperCase() === rawCode;
+          }) || null;
+        }
 
         if (!matchedUserDoc) {
           return showAppNotice('No existe ningún usuario con ese ID único.');
         }
 
-        const targetUid = matchedUserDoc.id;
         const targetData = matchedUserDoc.data() || {};
-
-        if (targetUid === firebaseUser.uid) {
-          return showAppNotice('Ese ID es el tuyo.');
-        }
-        if (Array.isArray(band.memberUids) && band.memberUids.includes(targetUid)) {
-          return showAppNotice('Ese músico ya forma parte de esta banda.');
-        }
-
-        // Comprobar si ya existe invitación pendiente para este usuario en esta banda
-        const dupQuery = query(
-          collection(db, 'bandInvitations'),
-          where('bandId', '==', band.id),
-          where('invitedUid', '==', targetUid),
-          where('status', '==', 'pending')
+        await inviteSpecificUidToBand(
+          band,
+          matchedUserDoc.id,
+          targetData.name || targetData.alias || rawCode,
+          instrumentVal
         );
-        const dupSnap = await getDocs(dupQuery);
-        if (!dupSnap.empty) {
-          return showAppNotice('Ya existe una invitación pendiente para este músico en esta banda.');
-        }
-
-        await addDoc(collection(db, 'bandInvitations'), {
-          bandId: band.id,
-          bandName: band.name,
-          invitedUid: targetUid,
-          invitedCode: rawCode,
-          invitedName: targetData.name || targetData.alias || 'Músico',
-          invitedByUid: firebaseUser.uid,
-          invitedByName: `${activeUser.name} · ${activeUser.alias}`,
-          instrument: instrumentVal,
-          status: 'pending',
-          createdAt: serverTimestamp()
-        });
-
         if (codeInput) codeInput.value = '';
-        showAppNotice(`Invitación enviada a ${targetData.name || rawCode} como ${instrumentVal}.`);
+      } catch (err) {
+        showAppNotice(formatFirebaseError(err));
+      }
+    };
+
+    window.inviteChatPeerToBand = async function inviteChatPeerToBand() {
+      if (!requireAuthenticated('Invitar desde chat')) return;
+      if (!activeConversationId || !currentPeerProfile?.uid) return;
+      const bandId = document.getElementById('threadInviteBandSelect')?.value || '';
+      const instVal = document.getElementById('threadInviteInstSelect')?.value || 'Guitarra eléctrica';
+      const band = bands.find((b) => b.id === bandId);
+      if (!band) return showAppNotice('Selecciona una banda.');
+
+      try {
+        await inviteSpecificUidToBand(band, currentPeerProfile.uid, currentPeerProfile.name, instVal);
       } catch (err) {
         showAppNotice(formatFirebaseError(err));
       }
     };
 
     window.respondBandInvitation = async function respondBandInvitation(invId, accept) {
-      if (!firebaseUser) return;
+      if (!requireAuthenticated('Responder invitación')) return;
       const inv = pendingInvitations.find((item) => item.id === invId);
       if (!inv) return;
 
@@ -2207,7 +2463,7 @@
       const dot1 = document.getElementById('accountInvitesDot');
       const dot2 = document.getElementById('tabAccountInviteDot');
 
-      const hasInvites = pendingInvitations.length > 0;
+      const hasInvites = !isGuestSession && pendingInvitations.length > 0;
       if (dot1) dot1.classList.toggle('hidden', !hasInvites);
       if (dot2) dot2.classList.toggle('hidden', !hasInvites);
 
@@ -2278,7 +2534,7 @@
     }
 
     window.deleteOwnAd = async function deleteOwnAd(adId) {
-      if (!firebaseUser) return;
+      if (!requireAuthenticated('Borrar anuncio')) return;
       if (!window.confirm(t('confirmDeleteAd'))) return;
       try {
         await deleteDoc(doc(db, 'ads', adId));
@@ -2296,6 +2552,33 @@
       const cleanName = String(rawName || '').trim() || 'Músico';
       return { uid: peerUid, name: cleanName };
     }
+
+    function syncThreadInviteBar() {
+      const bar = document.getElementById('threadInviteBar');
+      const bandSel = document.getElementById('threadInviteBandSelect');
+      const instSel = document.getElementById('threadInviteInstSelect');
+      if (!bar || !bandSel || !instSel) return;
+
+      const myBands = getUserBands();
+      if (!firebaseUser || isGuestSession || !myBands.length || !currentPeerProfile?.uid || currentPeerProfile.uid === firebaseUser.uid) {
+        bar.classList.add('hidden');
+        return;
+      }
+
+      bar.classList.remove('hidden');
+      bandSel.innerHTML = myBands.map((b) => `<option value="${escapeHtml(b.id)}">${escapeHtml(b.name)}</option>`).join('');
+      instSel.innerHTML = CATALOG_INSTRUMENTS.map((inst) => `<option value="${escapeHtml(inst)}">${escapeHtml(inst)}</option>`).join('');
+    }
+
+    window.jumpToLinkedAdFromThread = function jumpToLinkedAdFromThread() {
+      const conv = conversations.find((c) => c.id === activeConversationId);
+      const targetAdId = conv?.adId || '';
+      window.switchTab('explore');
+      if (targetAdId && ads.some((a) => a.id === targetAdId)) {
+        expandedAdId = targetAdId;
+        renderFeed();
+      }
+    };
 
     async function loadPeerProfile(conv) {
       const peerInfo = getPeerInfoFromConversation(conv);
@@ -2347,6 +2630,7 @@
       if (nameEl) nameEl.textContent = profile.name;
       if (avatarEl) avatarEl.innerHTML = renderUserAvatarContent(profile, 'text-[10px]');
 
+      syncThreadInviteBar();
       if (isPeerProfileOpen) {
         renderPeerReadOnlyProfileCard();
       }
@@ -2427,7 +2711,7 @@
     };
 
     window.startOrOpenPrivateChatFromAd = async function startOrOpenPrivateChatFromAd(adId) {
-      if (!firebaseUser) return showAppNotice('Inicia sesión para enviar un mensaje.');
+      if (!requireAuthenticated('Contactar por chat')) return;
       const ad = ads.find((item) => item.id === adId);
       if (!ad) return showAppNotice('No se encontró el anuncio.');
 
@@ -2468,7 +2752,7 @@
     };
 
     window.openPrivateThread = async function openPrivateThread(convId) {
-      if (!firebaseUser) return;
+      if (!requireAuthenticated('Abrir chat')) return;
       activeConversationId = convId;
       isPeerProfileOpen = false;
       renderPeerReadOnlyProfileCard();
@@ -2494,7 +2778,8 @@
       if (conv) {
         const peerInfo = getPeerInfoFromConversation(conv);
         document.getElementById('threadPeerName').textContent = peerInfo.name;
-        document.getElementById('threadAdTitle').textContent = `Anuncio: ${conv.adTitle || ''}`;
+        const adLinkBtn = document.getElementById('threadAdLinkBtn');
+        if (adLinkBtn) adLinkBtn.textContent = `Ver anuncio: ${conv.adTitle || 'Anuncio'} →`;
         await loadPeerProfile(conv);
 
         if (Array.isArray(conv.unreadBy) && conv.unreadBy.includes(firebaseUser.uid)) {
@@ -2559,7 +2844,11 @@
       const listEl = document.getElementById('conversationsList');
       const badgeEl = document.getElementById('unreadMessagesBadge');
       const redDotEl = document.getElementById('messagesRedDot');
-      if (!firebaseUser) return;
+      if (!firebaseUser || isGuestSession) {
+        if (redDotEl) redDotEl.classList.add('hidden');
+        if (badgeEl) badgeEl.classList.add('hidden');
+        return;
+      }
 
       const sorted = [...conversations].sort((a, b) => {
         const ta = a.updatedAt?.toMillis ? a.updatedAt.toMillis() : 0;
@@ -2608,8 +2897,20 @@
     function updateAccountHeaderCard() {
       const uidLabel = document.getElementById('authUidLabel');
       const codeLabel = document.getElementById('myUniqueCodeLabel');
-      const codeValue = activeUser.memberCode || (firebaseUser ? buildUniqueMemberCode(firebaseUser.uid) : 'MM-0000-0000');
-      if (uidLabel && firebaseUser) uidLabel.textContent = `UID: ${firebaseUser.uid.slice(0, 12)}...`;
+      const statusPill = document.getElementById('accountStatusPill');
+
+      if (isGuestSession || !firebaseUser) {
+        if (uidLabel) uidLabel.textContent = 'Modo invitado';
+        if (codeLabel) codeLabel.textContent = '—';
+        if (statusPill) statusPill.textContent = 'INVITADO';
+        const shortcutLabel = document.getElementById('headerAccountShortcutLabel');
+        if (shortcutLabel) shortcutLabel.textContent = 'Invitado';
+        return;
+      }
+
+      if (statusPill) statusPill.textContent = 'CONECTADO';
+      const codeValue = activeUser.memberCode || buildUniqueMemberCode(firebaseUser.uid);
+      if (uidLabel) uidLabel.textContent = `UID: ${firebaseUser.uid.slice(0, 12)}...`;
       if (codeLabel) codeLabel.textContent = codeValue;
 
       const stylesSummary = (activeUser.stylesList && activeUser.stylesList.length)
@@ -2638,7 +2939,7 @@
       if (editAvatar) editAvatar.innerHTML = renderUserAvatarContent(activeUser, 'text-xs');
 
       const myBands = getUserBands();
-      const myAds = firebaseUser ? ads.filter((a) => (a.authorUid || a.ownerUid) === firebaseUser.uid) : ads;
+      const myAds = ads.filter((a) => (a.authorUid || a.ownerUid) === firebaseUser.uid);
       const adsCountEl = document.getElementById('accountAdsCount');
       const myBandsCountEl = document.getElementById('accountMyBandsCount');
       if (adsCountEl) adsCountEl.textContent = String(myAds.length);
@@ -2680,6 +2981,7 @@
     }
 
     window.clearAccountPhoto = function clearAccountPhoto() {
+      if (!requireAuthenticated('Quitar foto')) return;
       activeUser.photoUrl = '';
       const f = document.getElementById('editPhotoFileInput');
       if (f) f.value = '';
@@ -2694,7 +2996,10 @@
       const queryText = (document.getElementById('quickSearchInput')?.value || '').trim().toLowerCase();
       const rStyles = resolveSelectedValues(selectedFilterStyles, customFilterStyleText);
       const rInst = resolveSelectedValues(selectedFilterInstruments, customFilterInstrumentText);
+      const rDays = [...selectedFilterDays];
       const statusFilter = document.getElementById('filterAdStatusSelect')?.value || '';
+      const levelFilter = document.getElementById('filterLevelSelect')?.value || '';
+      const cityFilter = (document.getElementById('filterCityInput')?.value || '').trim().toLowerCase();
       const bandLinkedOnly = Boolean(document.getElementById('filterBandLinkedOnly')?.checked);
 
       const filtered = ads.filter((ad) => {
@@ -2702,6 +3007,10 @@
 
         const adStatus = ad.status || 'open';
         if (statusFilter && adStatus !== statusFilter) return false;
+
+        if (levelFilter && String(ad.level || '').toLowerCase() !== levelFilter.toLowerCase()) return false;
+
+        if (cityFilter && !String(ad.zone || '').toLowerCase().includes(cityFilter)) return false;
 
         if (bandLinkedOnly && !ad.bandId && !ad.bandName) return false;
 
@@ -2714,8 +3023,13 @@
           const adInst = String(ad.instrument || '').toLowerCase();
           if (!rInst.some((inst) => adInst.includes(inst.toLowerCase()))) return false;
         }
+        if (rDays.length > 0) {
+          const adDays = Array.isArray(ad.rehearsalDays) ? ad.rehearsalDays.map((d) => String(d).toLowerCase()) : [];
+          const matchesDay = rDays.some((d) => adDays.includes(d.toLowerCase())) || Boolean(ad.rehearsalFlexible);
+          if (!matchesDay) return false;
+        }
         if (queryText) {
-          const blob = `${ad.title} ${ad.author} ${ad.bandName || ''} ${ad.instrument} ${adStyles.join(' ')} ${ad.zone} ${ad.desc}`.toLowerCase();
+          const blob = `${ad.title} ${ad.author} ${ad.bandName || ''} ${ad.instrument} ${adStyles.join(' ')} ${ad.zone} ${ad.level || ''} ${formatRehearsalSummary(ad)} ${ad.desc}`.toLowerCase();
           if (!blob.includes(queryText)) return false;
         }
         return true;
@@ -2743,10 +3057,13 @@
 
         const stMeta = getAdStatusMeta(ad.status);
         const ownerUid = ad.authorUid || ad.ownerUid || '';
-        const isOwnAd = firebaseUser && ownerUid === firebaseUser.uid;
+        const isOwnAd = firebaseUser && !isGuestSession && ownerUid === firebaseUser.uid;
         const bandBadge = ad.bandName
           ? `<button type="button" onclick="event.stopPropagation(); ${ad.bandId ? `openBandProfile('${escapeHtml(ad.bandId)}')` : ''}" class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-zinc-800/90 text-amber-300 hover:text-amber-200 truncate cursor-pointer">🎸 ${escapeHtml(ad.bandName)}</button>`
           : '';
+
+        const rehearsalInfo = formatRehearsalSummary(ad);
+        const levelBadge = ad.level ? `<span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-zinc-800/80 text-zinc-300">${escapeHtml(ad.level)}</span>` : '';
 
         return `
           <article onclick="toggleExpandAd('${escapeHtml(ad.id)}')" class="p-3.5 hover:bg-[#151822] transition cursor-pointer space-y-1.5 ${stMeta.key !== 'open' ? 'opacity-80' : ''}">
@@ -2758,11 +3075,13 @@
                 <span class="font-mono text-[10px] uppercase px-1.5 py-0.5 rounded border shrink-0 ${stMeta.cls}">
                   ${escapeHtml(stMeta.label)}
                 </span>
+                ${levelBadge}
                 ${bandBadge}
               </div>
               <span class="font-mono text-[10px] text-zinc-500 shrink-0">${escapeHtml(formatRelativeTime(ad.createdAt))}</span>
             </div>
             <h2 class="text-sm font-semibold text-zinc-100 leading-snug">${escapeHtml(ad.title)}</h2>
+            <p class="text-[11px] font-mono text-amber-300/90 truncate">Ensayo: ${escapeHtml(rehearsalInfo)}</p>
             <p class="text-xs text-zinc-400 ${isExpanded ? '' : 'line-clamp-1'}">${escapeHtml(ad.desc)}</p>
             <div class="pt-1 flex items-center justify-between gap-2 text-[11px] text-zinc-400">
               <span class="font-medium text-zinc-300 truncate">${escapeHtml(ad.author)}</span>
@@ -2826,7 +3145,6 @@
       renderFeed();
     };
 
-    // --- RENDER DE FICHA DEDICADA DE BANDA ---
     function renderDedicatedBandView() {
       const container = document.getElementById('bandDedicatedContent');
       const topActions = document.getElementById('bandDedicatedTopActions');
@@ -2840,28 +3158,20 @@
       }
 
       const bStyles = Array.isArray(band.styles) ? band.styles : (band.style ? [band.style] : []);
-      const isOwner = firebaseUser && band.ownerUid === firebaseUser.uid;
-      const isMember = firebaseUser && (
-        isOwner ||
-        (Array.isArray(band.memberUids) && band.memberUids.includes(firebaseUser.uid))
-      );
+      const canManage = firebaseUser && !isGuestSession && canUserManageBand(band, firebaseUser.uid);
 
       if (topActions) {
-        topActions.innerHTML = `
-          ${isMember ? `
-            <button type="button" onclick="startEditBand('${escapeHtml(band.id)}')" class="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-amber-300 text-xs font-semibold cursor-pointer">
-              Editar
-            </button>
-            <button type="button" onclick="leaveBand('${escapeHtml(band.id)}')" class="px-2.5 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/70 text-rose-300 border border-rose-500/30 text-xs font-semibold cursor-pointer">
-              ${escapeHtml(t('leaveBandBtn'))}
-            </button>
-          ` : ''}
-          ${isOwner ? `
-            <button type="button" onclick="deleteBandCompletely('${escapeHtml(band.id)}')" class="px-2.5 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/40 text-xs font-semibold cursor-pointer">
-              Borrar banda
-            </button>
-          ` : ''}
-        `;
+        topActions.innerHTML = canManage ? `
+          <button type="button" onclick="startEditBand('${escapeHtml(band.id)}')" class="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-amber-300 text-xs font-semibold cursor-pointer">
+            Editar
+          </button>
+          <button type="button" onclick="leaveBand('${escapeHtml(band.id)}')" class="px-2.5 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/70 text-rose-300 border border-rose-500/30 text-xs font-semibold cursor-pointer">
+            ${escapeHtml(t('leaveBandBtn'))}
+          </button>
+          <button type="button" onclick="deleteBandCompletely('${escapeHtml(band.id)}')" class="px-2.5 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/40 text-xs font-semibold cursor-pointer">
+            Borrar
+          </button>
+        ` : '';
       }
 
       const relatedAds = ads.filter((a) =>
@@ -2869,7 +3179,6 @@
         (a.author || '').toLowerCase().includes((band.name || '').toLowerCase())
       );
 
-      // Construir lista unificada de miembros
       const detailedList = Array.isArray(band.membersDetailed) && band.membersDetailed.length
         ? band.membersDetailed
         : (Array.isArray(band.members) ? band.members.map((str, i) => {
@@ -2885,7 +3194,6 @@
         : 'bg-zinc-800 text-zinc-300 border-zinc-700';
 
       container.innerHTML = `
-        <!-- Cabecera visual con foto -->
         <div class="rounded-2xl bg-[#111318] border border-zinc-800/90 overflow-hidden shadow-xl">
           <div class="h-32 bg-gradient-to-r from-[#171b26] via-[#1f1912] to-[#13161f] relative flex items-center justify-center overflow-hidden border-b border-zinc-800">
             ${band.photoUrl
@@ -2900,7 +3208,7 @@
           <div class="p-4 space-y-3">
             <div>
               <h1 class="font-display text-xl font-bold text-zinc-100">${escapeHtml(band.name)}</h1>
-              <p class="text-xs text-amber-400 font-medium mt-0.5">${escapeHtml(bStyles.join(' · '))}</p>
+              <p class="text-xs text-amber-400 font-medium mt-0.5">${escapeHtml(bStyles.join(' · '))}${band.level ? ` · ${escapeHtml(band.level)}` : ''}</p>
             </div>
 
             <p class="text-xs text-zinc-300 leading-relaxed">${escapeHtml(band.tagline || 'Sin descripción.')}</p>
@@ -2908,18 +3216,16 @@
             <div class="grid grid-cols-1 gap-2 rounded-xl bg-[#0b0d12] border border-zinc-800 p-3 text-xs">
               <div><span class="text-zinc-500 font-mono text-[10px] uppercase block">Ciudad / Zona</span><span class="text-zinc-200">${escapeHtml(band.zone || 'No especificada')}</span></div>
               <div><span class="text-zinc-500 font-mono text-[10px] uppercase block">Influencias</span><span class="text-amber-300/90">${escapeHtml(band.influences || 'No indicadas')}</span></div>
-              <div><span class="text-zinc-500 font-mono text-[10px] uppercase block">Ensayos y horario</span><span class="text-zinc-200">${escapeHtml(band.schedule || 'No especificado')}</span></div>
+              <div><span class="text-zinc-500 font-mono text-[10px] uppercase block">Días, horario y ensayo</span><span class="text-zinc-200">${escapeHtml(formatRehearsalSummary(band))}${band.schedule ? ` · ${escapeHtml(band.schedule)}` : ''}</span></div>
             </div>
           </div>
         </div>
 
-        <!-- RRSS y plataformas musicales -->
         <div class="rounded-2xl bg-[#111318] border border-zinc-800/90 p-4 space-y-2.5 text-xs">
           <h2 class="font-display text-sm font-bold text-zinc-100">Redes y música</h2>
           ${renderBandSocialLinksHtml(band.links)}
         </div>
 
-        <!-- Formación e integrantes -->
         <div class="rounded-2xl bg-[#111318] border border-zinc-800/90 p-4 space-y-3 text-xs">
           <div class="flex items-center justify-between">
             <h2 class="font-display text-sm font-bold text-zinc-100">Integrantes (${detailedList.length})</h2>
@@ -2928,8 +3234,8 @@
           <div class="divide-y divide-zinc-800/80 rounded-xl bg-[#0b0d12] border border-zinc-800 overflow-hidden">
             ${detailedList.length ? detailedList.map((m) => {
               const isThisOwner = m.uid && m.uid === band.ownerUid;
-              const canEditThisMember = isMember && m.uid;
-              const canRemoveThisMember = isOwner && m.uid !== firebaseUser?.uid;
+              const canEditThisMember = canManage && m.uid;
+              const canRemoveThisMember = canManage && m.uid !== firebaseUser?.uid;
 
               return `
                 <div class="p-2.5 flex items-center justify-between gap-2">
@@ -2963,7 +3269,7 @@
             }).join('') : `<div class="p-3 text-zinc-500 text-center">Sin integrantes detallados.</div>`}
           </div>
 
-          ${isMember ? `
+          ${canManage ? `
             <div class="pt-2 border-t border-zinc-800/80 space-y-2">
               <span class="block font-mono text-[10px] uppercase text-amber-400">Invitar músico por su ID único</span>
               <input
@@ -2991,7 +3297,6 @@
           ` : ''}
         </div>
 
-        <!-- Anuncios vinculados a esta banda -->
         <div class="rounded-2xl bg-[#111318] border border-zinc-800/90 p-4 space-y-2.5 text-xs">
           <h2 class="font-display text-sm font-bold text-zinc-100">Anuncios de la banda (${relatedAds.length})</h2>
           ${relatedAds.length ? relatedAds.map((a) => {
@@ -3039,7 +3344,7 @@
         if (onlyActiveAds && !hasOpenAd) return false;
         if (styleFilter && !bStyles.some((s) => String(s).toLowerCase().includes(styleFilter))) return false;
         if (searchQ) {
-          const blob = `${b.name} ${bStyles.join(' ')} ${b.influences || ''} ${b.zone || ''} ${b.tagline || ''} ${b.schedule || ''}`.toLowerCase();
+          const blob = `${b.name} ${bStyles.join(' ')} ${b.influences || ''} ${b.zone || ''} ${b.tagline || ''} ${formatRehearsalSummary(b)}`.toLowerCase();
           if (!blob.includes(searchQ)) return false;
         }
         return true;
@@ -3069,6 +3374,7 @@
                 <span class="font-mono text-[10px] text-amber-400 truncate">${escapeHtml(bStyles.join(' · '))}</span>
               </div>
               <h3 class="font-display text-sm font-bold text-zinc-100 truncate">${escapeHtml(b.name)}</h3>
+              <p class="text-[11px] font-mono text-zinc-300 truncate">${escapeHtml(b.level || 'Intermedio')} · ${escapeHtml(formatRehearsalSummary(b))}</p>
               <p class="text-xs text-zinc-400 line-clamp-1">${escapeHtml(b.tagline || '')}</p>
               <div class="pt-0.5 flex items-center justify-between text-[11px] text-zinc-500">
                 <span class="truncate">${escapeHtml(b.zone || '')}</span>
@@ -3100,9 +3406,8 @@
       isPeerProfileOpen = false;
     }
 
-    function startFirestoreListeners(uid) {
+    function startPublicReadListeners() {
       stopFirestoreListeners();
-
       unsubAds = onSnapshot(query(collection(db, 'ads'), orderBy('createdAt', 'desc')), (snap) => {
         ads = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         updateAccountHeaderCard();
@@ -3115,8 +3420,13 @@
         updateAccountHeaderCard();
         renderBandsSection();
         syncPublishBandSelector();
+        syncThreadInviteBar();
         if (isPeerProfileOpen) renderPeerReadOnlyProfileCard();
       });
+    }
+
+    function startFirestoreListeners(uid) {
+      startPublicReadListeners();
 
       const invQuery = query(
         collection(db, 'bandInvitations'),
@@ -3166,12 +3476,15 @@
       firebaseUser = user;
       if (!user) {
         stopFirestoreListeners();
-        setAuthGateVisible(false);
+        if (!isGuestSession) {
+          setShellVisible(false);
+        }
         return;
       }
 
+      isGuestSession = false;
       clearGateError();
-      setAuthGateVisible(true);
+      setShellVisible(true);
       startFirestoreListeners(user.uid);
 
       const baseName = user.displayName || user.email?.split('@')[0] || 'Músico';
@@ -3183,7 +3496,7 @@
         const saved = snap.data();
         const savedStyles = Array.isArray(saved.stylesList) && saved.stylesList.length
           ? saved.stylesList
-          : String(saved.styles || 'Hard Rock, Punk Rock').split(/[·,/]/).map((s) => s.trim()).filter(Boolean);
+          : String(saved.styles || '').split(/[·,/]/).map((s) => s.trim()).filter(Boolean);
         const memberCode = saved.memberCode || generatedCode;
         if (saved.language && I18N[saved.language]) {
           currentLang = saved.language;
@@ -3198,7 +3511,7 @@
           name: saved.name || baseName,
           alias: saved.alias || (saved.name || baseName).split(/\s+/)[0],
           instrument: saved.instrument || 'Guitarra eléctrica',
-          zone: saved.zone || 'Barcelona, Catalonia (ES)',
+          zone: saved.zone || '',
           stylesList: savedStyles,
           styles: savedStyles.join(' · '),
           influences: saved.influences || '',
@@ -3219,9 +3532,9 @@
           name: baseName,
           alias: baseName.split(/\s+/)[0],
           instrument: 'Guitarra eléctrica',
-          zone: 'Barcelona, Catalonia (ES)',
-          stylesList: ['Hard Rock', 'Punk Rock'],
-          styles: 'Hard Rock · Punk Rock',
+          zone: '',
+          stylesList: [],
+          styles: '',
           influences: '',
           photoUrl: user.photoURL || '',
           bio: '',
@@ -3254,6 +3567,7 @@
       renderBandsSection();
       renderPendingInvitationsCard();
       syncPublishBandSelector();
+      syncThreadInviteBar();
 
       const presRef = ref(rtdb, `presence/${user.uid}`);
       await set(presRef, { online: true, name: activeUser.name, lastSeen: rtdbServerTimestamp() }).catch(() => {});
@@ -3261,6 +3575,10 @@
     });
 
     document.addEventListener('DOMContentLoaded', () => {
+      renderDayCheckboxes('pubDaysChecks', 'pub', []);
+      renderDayCheckboxes('newBandDaysChecks', 'newBand', []);
+      renderDayCheckboxes('editBandDaysChecks', 'editBand', []);
+
       document.querySelectorAll('[data-city-autocomplete]').forEach(attachCityAutocomplete);
 
       document.getElementById('quickSearchInput')?.addEventListener('input', renderFeed);
@@ -3282,23 +3600,6 @@
         if (!panel) return;
         const isHidden = panel.classList.toggle('hidden');
         e.currentTarget.setAttribute('aria-expanded', String(!isHidden));
-      });
-
-      document.getElementById('btnSeedDemoData')?.addEventListener('click', async () => {
-        if (!firebaseUser) return showAppNotice('Inicia sesión primero para cargar la base inicial.');
-        for (const b of SEED_BANDS) {
-          await addDoc(collection(db, 'bands'), {
-            ...b,
-            ownerUid: firebaseUser.uid,
-            memberUids: [firebaseUser.uid],
-            membersDetailed: [{ uid: firebaseUser.uid, name: activeUser.name, instrument: activeUser.instrument }],
-            createdAt: serverTimestamp()
-          });
-        }
-        for (const a of SEED_ADS) {
-          await addDoc(collection(db, 'ads'), { ...a, authorUid: firebaseUser.uid, ownerUid: firebaseUser.uid, createdAt: serverTimestamp() });
-        }
-        showAppNotice('Base inicial cargada.');
       });
 
       document.getElementById('gateGoogleSignIn')?.addEventListener('click', async () => {
@@ -3347,6 +3648,12 @@
 
       document.getElementById('btnSignOut')?.addEventListener('click', async (e) => {
         e.preventDefault();
+        if (isGuestSession) {
+          isGuestSession = false;
+          stopFirestoreListeners();
+          setShellVisible(false);
+          return;
+        }
         const currentUid = firebaseUser?.uid || auth.currentUser?.uid;
         stopFirestoreListeners();
         try {
@@ -3358,14 +3665,14 @@
           showGateError(formatFirebaseError(err));
         } finally {
           firebaseUser = null;
-          setAuthGateVisible(false);
+          setShellVisible(false);
           window.switchTab('explore');
         }
       });
 
       document.getElementById('sendPrivateMessageForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!firebaseUser || !activeConversationId) return;
+        if (!requireAuthenticated('Enviar mensaje') || !activeConversationId) return;
         const input = document.getElementById('privateMessageInput');
         const text = (input?.value || '').trim();
         if (!text) return;
@@ -3401,8 +3708,8 @@
         }
       });
 
-      // Gestión de foto de perfil con aviso de tamaño/procesado
       document.getElementById('editPhotoFileInput')?.addEventListener('change', async (e) => {
+        if (!requireAuthenticated('Subir foto')) return;
         const file = e.target?.files?.[0];
         if (!file) return;
         const hintEl = document.getElementById('photoUploadStatusHint');
@@ -3436,8 +3743,8 @@
         updateAccountHeaderCard();
       });
 
-      // Fotos de banda (crear y editar)
       document.getElementById('newBandPhotoFile')?.addEventListener('change', async (e) => {
+        if (!requireAuthenticated('Subir foto banda')) return;
         const file = e.target?.files?.[0];
         if (!file) return;
         if (file.size > 8 * 1024 * 1024) return showAppNotice('La foto de banda supera los 8 MB.');
@@ -3454,6 +3761,7 @@
       });
 
       document.getElementById('editBandPhotoFile')?.addEventListener('change', async (e) => {
+        if (!requireAuthenticated('Subir foto banda')) return;
         const file = e.target?.files?.[0];
         if (!file) return;
         if (file.size > 8 * 1024 * 1024) return showAppNotice('La foto de banda supera los 8 MB.');
@@ -3471,7 +3779,7 @@
 
       document.getElementById('editAccountInfoForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!firebaseUser) return showAppNotice('Inicia sesión para guardar tu perfil.');
+        if (!requireAuthenticated('Guardar perfil')) return;
         const rStyles = resolveSelectedValues(selectedProfileStyles, customProfileStyleText);
         const memberCode = activeUser.memberCode || buildUniqueMemberCode(firebaseUser.uid);
 
@@ -3480,7 +3788,7 @@
         activeUser.alias = (document.getElementById('editAccAlias')?.value || '').trim() || activeUser.name.split(/\s+/)[0];
         activeUser.instrument = document.getElementById('editAccInstrumentSelect')?.value || activeUser.instrument;
         activeUser.zone = (document.getElementById('editAccZone')?.value || '').trim();
-        activeUser.stylesList = rStyles.length ? rStyles : activeUser.stylesList;
+        activeUser.stylesList = rStyles;
         activeUser.styles = activeUser.stylesList.join(' · ');
         activeUser.influences = (document.getElementById('editAccInfluences')?.value || '').trim();
         activeUser.contactEmail = (document.getElementById('editAccContactEmail')?.value || '').trim() || activeUser.email;
@@ -3517,7 +3825,15 @@
 
       document.getElementById('editBandForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!firebaseUser || !editingBandId) return;
+        if (!requireAuthenticated('Editar banda') || !editingBandId) return;
+
+        const rehearsalDays = getCheckedDays('editBand');
+        const rehearsalTimeSlot = (document.getElementById('editBandTimeSlot')?.value || '').trim();
+        const rehearsalFlexible = Boolean(document.getElementById('editBandFlexible')?.checked);
+        const level = document.getElementById('editBandLevel')?.value || 'Intermedio';
+        if (!rehearsalDays.length && !rehearsalFlexible) {
+          return showAppNotice('Selecciona al menos un día de ensayo o marca flexibilidad.');
+        }
 
         const linksCheck = validateBandLinksObject({
           youtube: document.getElementById('editBandYoutube')?.value || '',
@@ -3530,14 +3846,20 @@
         }
 
         const ebStyles = resolveSelectedValues(selectedEditBandStyles, customEditBandStyleText);
-        const stylesFinal = ebStyles.length ? ebStyles : ['Rock Alternativo'];
+        if (!ebStyles.length) {
+          return showAppNotice('Selecciona al menos un estilo para la banda.');
+        }
 
         try {
           await updateDoc(doc(db, 'bands', editingBandId), {
             name: (document.getElementById('editBandName')?.value || '').trim().toUpperCase(),
             status: document.getElementById('editBandStatus')?.value || 'ACTIVA',
-            styles: stylesFinal,
-            style: stylesFinal.join(' · '),
+            level,
+            rehearsalDays,
+            rehearsalTimeSlot,
+            rehearsalFlexible,
+            styles: ebStyles,
+            style: ebStyles.join(' · '),
             zone: (document.getElementById('editBandZone')?.value || '').trim(),
             contactEmail: (document.getElementById('editBandEmail')?.value || '').trim(),
             influences: (document.getElementById('editBandInfluences')?.value || '').trim(),
@@ -3558,7 +3880,7 @@
       });
 
       document.getElementById('btnToggleCreateBand')?.addEventListener('click', () => {
-        if (!firebaseUser) return showAppNotice('Inicia sesión primero para crear una banda.');
+        if (!requireAuthenticated('Crear banda')) return;
         document.getElementById('createBandForm')?.classList.toggle('hidden');
       });
       document.getElementById('btnCancelCreateBand')?.addEventListener('click', () => {
@@ -3566,7 +3888,15 @@
       });
       document.getElementById('createBandForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!firebaseUser) return showAppNotice('Inicia sesión primero.');
+        if (!requireAuthenticated('Crear banda')) return;
+
+        const rehearsalDays = getCheckedDays('newBand');
+        const rehearsalTimeSlot = (document.getElementById('newBandTimeSlot')?.value || '').trim();
+        const rehearsalFlexible = Boolean(document.getElementById('newBandFlexible')?.checked);
+        const level = document.getElementById('newBandLevel')?.value || 'Intermedio';
+        if (!rehearsalDays.length && !rehearsalFlexible) {
+          return showAppNotice('Selecciona al menos un día de ensayo o marca flexibilidad.');
+        }
 
         const linksCheck = validateBandLinksObject({
           youtube: document.getElementById('newBandYoutube')?.value || '',
@@ -3579,14 +3909,20 @@
         }
 
         const nbStyles = resolveSelectedValues(selectedNewBandStyles, customNewBandStyleText);
-        const stylesFinal = nbStyles.length ? nbStyles : ['Rock Alternativo'];
+        if (!nbStyles.length) {
+          return showAppNotice('Selecciona al menos un estilo para la banda.');
+        }
 
         try {
           await addDoc(collection(db, 'bands'), {
             name: (document.getElementById('newBandName')?.value || '').trim().toUpperCase(),
             status: document.getElementById('newBandStatus')?.value || 'ACTIVA',
-            styles: stylesFinal,
-            style: stylesFinal.join(' · '),
+            level,
+            rehearsalDays,
+            rehearsalTimeSlot,
+            rehearsalFlexible,
+            styles: nbStyles,
+            style: nbStyles.join(' · '),
             influences: (document.getElementById('newBandInfluences')?.value || '').trim(),
             zone: (document.getElementById('newBandZone')?.value || '').trim(),
             contactEmail: (document.getElementById('newBandEmail')?.value || '').trim() || activeUser.contactEmail || firebaseUser.email || '',
@@ -3602,9 +3938,10 @@
           });
 
           e.target.reset();
+          setCheckedDays('newBand', []);
           newBandTempPhotoUrl = '';
           document.getElementById('newBandPhotoPreview').innerHTML = 'BND';
-          selectedNewBandStyles = ['Punk Rock'];
+          selectedNewBandStyles = [];
           customNewBandStyleText = '';
           renderMultiSelectControls();
           document.getElementById('createBandForm')?.classList.add('hidden');
@@ -3616,9 +3953,18 @@
 
       document.getElementById('quickPublishForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!firebaseUser) return showAppNotice('Inicia sesión primero para publicar un anuncio.');
+        if (!requireAuthenticated('Publicar anuncio')) return;
         const pubType = document.getElementById('pubType')?.value || 'Buscar banda';
         const pubStatus = document.getElementById('pubStatus')?.value || 'open';
+        const level = document.getElementById('pubLevel')?.value || 'Intermedio';
+        const rehearsalTimeSlot = (document.getElementById('pubTimeSlot')?.value || '').trim();
+        const rehearsalFlexible = Boolean(document.getElementById('pubFlexible')?.checked);
+        const rehearsalDays = getCheckedDays('pub');
+
+        if (!rehearsalDays.length && !rehearsalFlexible) {
+          return showAppNotice('Selecciona al menos un día de ensayo o marca flexibilidad.');
+        }
+
         const rInst = resolveSelectedValues(selectedPublishInstruments, customPublishInstrumentText);
         const rStyles = resolveSelectedValues(selectedPublishStyles, customPublishStyleText);
         if (!rInst.length) return showAppNotice('Selecciona al menos un instrumento.');
@@ -3629,21 +3975,31 @@
         let authorLabel = `${activeUser.name} · ${activeUser.alias}`;
 
         if (pubType === 'Buscar músico') {
-          const myBands = getUserBands();
-          const selectedBandId = document.getElementById('pubBandSelect')?.value || '';
-          const bandObj = myBands.find((b) => b.id === selectedBandId);
-          if (!bandObj) {
-            return showAppNotice('Solo puedes publicar como banda en una banda creada por ti o donde toques.');
+          const selectedBandId = document.getElementById('pubBandSelect')?.value || '__FORMING__';
+          if (selectedBandId === '__FORMING__') {
+            bandId = '';
+            bandName = 'Proyecto en formación';
+            authorLabel = `Proyecto en formación (${activeUser.name} · ${activeUser.alias})`;
+          } else {
+            const myBands = getUserBands();
+            const bandObj = myBands.find((b) => b.id === selectedBandId);
+            if (!bandObj) {
+              return showAppNotice('Selecciona una banda válida o "Proyecto en formación".');
+            }
+            bandId = bandObj.id;
+            bandName = bandObj.name;
+            authorLabel = `${bandObj.name} (${activeUser.name} · ${activeUser.alias})`;
           }
-          bandId = bandObj.id;
-          bandName = bandObj.name;
-          authorLabel = `${bandObj.name} (${activeUser.name} · ${activeUser.alias})`;
         }
 
         const contactEmail = (document.getElementById('pubContactEmail')?.value || '').trim() || activeUser.contactEmail || firebaseUser.email || '';
         const payload = {
           type: pubType,
           status: pubStatus,
+          level,
+          rehearsalDays,
+          rehearsalTimeSlot,
+          rehearsalFlexible,
           bandId,
           bandName,
           title: (document.getElementById('pubTitle')?.value || '').trim(),
@@ -3672,8 +4028,9 @@
           }
 
           e.target.reset();
-          selectedPublishInstruments = ['Bajo eléctrico'];
-          selectedPublishStyles = ['Punk Rock'];
+          setCheckedDays('pub', []);
+          selectedPublishInstruments = [];
+          selectedPublishStyles = [];
           customPublishInstrumentText = '';
           customPublishStyleText = '';
           renderMultiSelectControls();
